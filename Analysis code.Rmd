@@ -173,17 +173,17 @@ pacman::p_load(readr, dplyr, tidyverse, lubridate, survival, survminer, hablar)
 
 # Import files created with text commented out above for analysis
 ```{r}
-seer0to39<-read_csv("seer0to39.csv")
-enroll_seerids<-read_csv("enroll_seerids.csv")
-mcseer <- read_csv("/Volumes/kijohnson/Active/mcseer_dsb/mcseer_dsb.csv") # Derek's file that contains continuity of enrollment variables
+seer0to39<-read_csv("/Volumes/kijohnson/Active/seer0to39.csv", show_col_types = FALSE)
+enroll_seerids<-read_csv("/Volumes/kijohnson/Active/enroll_seerids.csv", show_col_types = FALSE)
+mcseer <- read_csv("/Volumes/kijohnson/Active/mcseer_dsb/mcseer_dsb.csv", show_col_types = FALSE) # Derek's file that contains continuity of enrollment variables
 ```
 
 # Identify ids to exclude where patient has files in multiple states
 ```{r}
- df<-enroll_seerids %>% 
+df<-enroll_seerids %>% 
    find_duplicates(patient_id, YEAR)
  
-x <- unique(df$patient_id) # 841 vector of unique ids to exclude
+x <- unique(df$patient_id) # 841 vector of unique ids to exclude in exclusion section
 ```
 
 # Reduce dataset to variables needed for analysis
@@ -242,6 +242,8 @@ seer0to39<-seer0to39%>%
                            if_else(In_Medicaid_Flag==0 & Primary_Payer_at_DX == 10, 8, NULL))))))))))  # insurance NOS
 
 seer0to39$insurance<-factor(seer0to39$insurance, levels=c(0:8), labels=c("Private Insurance", "Medicaid", "Uninsured", "Misclassified as Medicaid", "Medicare", "Military", "Indian/Public Health Service", "Unknown", "insurance NOS"))
+
+table(seer0to39$insurance, seer0to39$Primary_Payer_at_DX, useNA="always")
 
 # Classification in SEER file
 seer0to39<-seer0to39%>%
@@ -388,7 +390,7 @@ seer0to39 <- seer0to39 %>%
   filter(Firstmalignantprimary_indicator == 1)
 ```
 
-# eligibility data management by year
+
 definitions from Bradley et al, Cancer
 1. not insured by Medicaid--does not link
 2. insured by Medicaid within the 12 months before dx
@@ -417,18 +419,21 @@ seer0to39<-left_join(seer0to39, mcseer2, by = c("patient_id"))
 ```
 
 
+
+
+
 # Another strategy
 - Use Derek's status 3 variable that is coded as follows:
 * 0 = not enrolled in Medicaid in DX month
 * 1 = enrolled in Medicaid in DX month
 * 2 = not enrolled in Medicaid in DX month, BUT was enrolled at least 1 of the 3 mos PRIOR
 * 3 = not enrolled in Medicaid in DX month, BUT was enrolled at least 1 of the 3 mos AFTER
+* 4 = BOTH conditions 2 and 3 are met
 * 9 = missing Medicaid enrollment status in DX month (assume not enrolled?)
+- 
 
-- for those coded as 9 use the following annotation:
-- use In_Medicaid_Flag = 1 and coding used for In_Medicaid_Flag = 0
+- For those never enrolled in Medicaid use their primary payor code to classify insurance at dx as private, other non-medicaid, and uninsured
 
-# another simpler one
 ```{r}
 seer0to39 <- seer0to39 %>%
   # NEVER ENROLEES
@@ -438,7 +443,7 @@ seer0to39 <- seer0to39 %>%
                         
                                 
   # ENROLLEES
-                        if_else(In_Medicaid_Flag == 1 & status == 0, 3, # not enrolled in Medicaid in dx month
+                        if_else(In_Medicaid_Flag == 1 & status3 == 0, 3, # not enrolled in Medicaid in dx month
                         if_else(In_Medicaid_Flag == 1 & status3 == 1 & (pre_mo3 >0 & post_mo3 >0), 4, # continuous enrollment through dx month
                         if_else(In_Medicaid_Flag == 1 & status3 %in% c(0,1,2,3,4), 3, # discontinuous enrollment
                         if_else(In_Medicaid_Flag == 1 & status3 == 9 & Primary_Payer_at_DX %in% c(20,21), 5, #  missing Medicaid enrollment status in DX month/private
@@ -451,14 +456,14 @@ seer0to39 <- seer0to39 %>%
   mutate(enroll3_cat3 = if_else(In_Medicaid_Flag == 1 & is.na(enroll3_cat3), 5, enroll3_cat3))
 
 seer0to39$enroll3_cat3 <- factor(seer0to39$enroll3_cat3, levels = c(0:7), labels = 
-                                   c("0:NM Private", 
+                                   c("0: NM Private", 
                                      "1: NM Other", 
                                      "2: NM Uninsured",
                                      "3: ME or NME in dx month discontinuous", 
                                      "4: ME continuous",
-                                     "5: MME in dx month/private",
-                                     "6: MME in dx month/other",
-                                     "7: MME in dx month/uninsured"
+                                     "5: Missing ME in dx month/private",
+                                     "6: Missing ME in dx month/other",
+                                     "7: Missing ME in dx month/uninsured"
                                      ))
 
 test <- seer0to39 %>%
@@ -466,8 +471,92 @@ test <- seer0to39 %>%
   count(enroll3_cat3)
 
 table(seer0to39$enroll3_cat3, seer0to39$insurance, useNA = "always")
-```
 
+table(seer0to19$enroll3_cat3, seer0to19$can_dead)
+
+# write test file
+library(openxlsx)
+write.xlsx(test, 'coding.xlsx')
+```
+# modified definitions from Bradley et al, Cancer
+1. not insured by Medicaid--does not link **In_Medicaid_Flag == 0**
+2. insured by Medicaid within the 12 months before dx **Derek's status 12 = 2**
+3. insured by Medicaid only in the month of the dx or within the 12 months after the dx **Derek's status 12 = 0 or 3**
+4. insured both before and after dx categorized as insured before dx **status12 == 1 & (pre_mo3 >0 & post_mo3 >0) and 4**
+* Derek's status 9 code as not covered by Medicaid in 12 months around dx
+
+```{r}
+seer0to39 <- seer0to39 %>%
+  mutate(Bradley_def1 =case_when(In_Medicaid_Flag == 0 ~0, # Not insured by Medicaid
+                                 In_Medicaid_Flag == 1 & (status12 %in% c(0,1,2,3,4) & (pre_mo12 >0 | post_mo12 >0))~ 1, # insured by Medicaid within a 25 mo window
+                                 In_Medicaid_Flag == 1 & status12 == 9|is.na(status12)|status12 == 0  ~ 2))  # not insured or unknown insurance by Medicaid within 25 mo
+# Fix NAs
+          
+table(seer0to39$Bradley_def1, useNA = "always")
+
+# Further classify those who are enrolled
+seer0to39 <- seer0to39 %>%
+  mutate(Bradley_def2 = case_when(Bradley_def1 == 0 ~ 0, # Not insured by Medicaid within 25 months
+                                  Bradley_def1 == 2 ~ 1,  # Not insured or unknown Medicaid insurance within 25 months
+                                  Bradley_def1 == 1 & status12 %in% c(0,1,2) & pre_mo12>=0 & (post_mo12==0|is.na(post_mo12)) ~2, # insured by Medicaid before diagnosis 
+                                  Bradley_def1 == 1 & status12 %in% c(0,1,3) & (pre_mo12==0|is.na(pre_mo12)) & post_mo12>=0 ~3, # insured by Medicaid after diagnosis 
+                                  Bradley_def1 == 1 & status12 %in% c(0,1,4) & pre_mo12>0 & post_mo12>0 ~4 # insured by Medicaid before and after dx
+                                 ))
+# code all NAs as insured by Medicaid only
+seer0to39 <- seer0to39 %>% 
+  mutate(Bradley_def2 = if_else(is.na(Bradley_def2), 5, Bradley_def2))
+                      
+seer0to39$Bradley_def2 <- factor(seer0to39$Bradley_def2, levels = c(0:5), labels = 
+                                   c("0: Not insured by Medicaid within 25 month window", 
+                                     "1: Not insured or unknown Medicaid insurance within 25 months",
+                                     "2: Insured by Medicaid within 12 mo before dx", 
+                                     "3: Insured by Medicaid within the 12 months after the dx",
+                                     "4: Insured by Medicaid with both the 12 month window before and after dx",
+                                     "5: Insured by Medicaid at dx only"
+                                     ))
+
+table(seer0to39$insurance, seer0to39$Bradley_def2, useNA = "always")
+test2 <- seer0to39 %>%
+  group_by(In_Medicaid_Flag, insurance, status12, pre_mo12, post_mo12) %>%
+  count(Bradley_def2)
+```
+# Use Bradley method for 12 but do it for 3 month
+
+```{r}
+seer0to39 <- seer0to39 %>%
+  mutate(Bradley_def1_3 =case_when(In_Medicaid_Flag == 0 ~0, # Not insured by Medicaid
+                                 In_Medicaid_Flag == 1 & (status3 %in% c(0,1,2,3,4) & (pre_mo3 >0 | post_mo3 >0))~ 1, # insured by Medicaid within a 25 mo window
+                                 In_Medicaid_Flag == 1 & status3 == 9|is.na(status3)|status3 == 0  ~ 2))  # not insured or unknown insurance by Medicaid within 25 mo
+# Fix NAs
+          
+table(seer0to39$Bradley_def1, useNA = "always")
+
+# Further classify those who are enrolled
+seer0to39 <- seer0to39 %>%
+  mutate(Bradley_def2_3 = case_when(Bradley_def1_3 == 0 ~ 0, # Not insured by Medicaid within 6 months
+                                  Bradley_def1_3 == 2 ~ 1,  # Not insured or unknown Medicaid insurance within 6 months
+                                  Bradley_def1_3 == 1 & status3 %in% c(0,1,2) & pre_mo3>=0 & (post_mo3==0|is.na(post_mo3)) ~2, # insured by Medicaid before diagnosis 
+                                  Bradley_def1_3 == 1 & status3 %in% c(0,1,3) & (pre_mo3==0|is.na(pre_mo3)) & post_mo3>=0 ~3, # insured by Medicaid after diagnosis 
+                                  Bradley_def1_3 == 1 & status3 %in% c(0,1,4) & pre_mo3>0 & post_mo3>0 ~4 # insured by Medicaid before and after dx
+                                 ))
+# code all NAs as insured by Medicaid only
+seer0to39 <- seer0to39 %>% 
+  mutate(Bradley_def2_3 = if_else(is.na(Bradley_def2_3), 5, Bradley_def2_3))
+                      
+seer0to39$Bradley_def2_3 <- factor(seer0to39$Bradley_def2_3, levels = c(0:5), labels = 
+                                   c("0: Not insured by Medicaid within 7 month window", 
+                                     "1: Not insured or unknown Medicaid insurance within 7 months",
+                                     "2: Insured by Medicaid within 3 mo before dx", 
+                                     "3: Insured by Medicaid within the 3 months after the dx",
+                                     "4: Insured by Medicaid with both the 3 month window before and after dx",
+                                     "5: Insured by Medicaid at dx only"
+                                     ))
+
+table(seer0to39$insurance, seer0to39$Bradley_def2_3, useNA = "always")
+test2 <- seer0to39 %>%
+  group_by(In_Medicaid_Flag, insurance, status3, pre_mo3, post_mo3) %>%
+  count(Bradley_def2_3)
+```
 
 # make separate dataframes for 0 to 19 and 20 to 39
 ```{r}
@@ -605,7 +694,14 @@ p<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ enroll3_cat3, data =seer0to
     xlab = "Months from diagnosis", 
     ylab = "Cancer survival proportion",
     legend.title = "",
-    #legend.labs = c("Not enrolled  \n in Medicaid/private at dx", "Not enrolled  \n in Medicaid/other", "Not enrolled \n Uninsured", "Enrolled in the 3 month \n window before and after", "Not enrolled in either the 3 month \n window before or after", "Enrolled in the 3 month \n window after but not before", "Enrolled in the 3 month \n window before but not after"),
+    legend.labs = c("0: NM Private", 
+                    "1: NM Other", 
+                    "2: NM Uninsured",
+                    "3: ME or NME in dx month discontinuous", 
+                    "4: ME continuous",
+                    "5: Missing ME in dx month/private",
+                    "6: Missing ME in dx month/other",
+                    "7: Missing ME in dx month/uninsured"),
     font.legend=c(8, "bold"),
     legend = c("right"),
     palette=c("black", "maroon2", "cyan3", "red", "orange", "green", "purple", "yellow"),
@@ -623,16 +719,22 @@ p<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ enroll3_cat3, data =seer0to
 p
 
 
-ggsave(filename = "Enroll3_cat2 KM plot 0 to 19.png",
+ggsave(filename = "Enroll3_cat3 KM plot 0 to 19.png",
        width = 11, height = 8.5, units = "in", bg="white") 
 
-table(seer0to19$enroll3_cat2, seer0to19$can_dead, useNA = "always")
 
 p1<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ enroll3_cat3, data =seer20to39), 
     xlab = "Months from diagnosis", 
     ylab = "Cancer survival proportion",
     legend.title = "",
-    #legend.labs = c("Not enrolled  \n in Medicaid/private at dx", "Not enrolled  \n in Medicaid/other", "Not enrolled \n Uninsured", "Enrolled in the 3 month \n window before and after", "Not enrolled in either the 3 month \n window before or after", "Enrolled in the 3 month \n window after but not before", "Enrolled in the 3 month \n window before but not after"),
+    legend.labs = c("0: NM Private", 
+                    "1: NM Other", 
+                    "2: NM Uninsured",
+                    "3: ME or NME in dx month discontinuous", 
+                    "4: ME continuous",
+                    "5: Missing ME in dx month/private",
+                    "6: Missing ME in dx month/other",
+                    "7: Missing ME in dx month/uninsured"),
     font.legend=c(8, "bold"),
     legend = c("right"),
     palette=c("black", "maroon2", "cyan3", "red", "orange", "green", "purple", "yellow"),
@@ -649,13 +751,74 @@ p1<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ enroll3_cat3, data =seer20
     tables.theme = theme_cleantable())
 p1
 
-ggsave(filename = "Enroll_cat6 KM plot 20 to 39.png",
+ggsave(filename = "Enroll3_cat3 KM plot 20 to 39.png",
+       width = 11, height = 8.5, units = "in", bg="white") 
+```
+# Bradley def (sort of anyway)
+```{r}
+p<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ Bradley_def2_3, data =seer0to19), 
+    xlab = "Months from diagnosis", 
+    ylab = "Cancer survival proportion",
+    legend.title = "",
+    legend.labs = c("0: Not insured by Medicaid within 7 month window", 
+                                     "1: Not insured or unknown Medicaid \n insurance within 7 months",
+                                     "2: Insured by Medicaid within 3 mo before dx but not after", 
+                                     "3: Insured by Medicaid within the 3 months after the dx but not before",
+                                     "4: Insured by Medicaid within both the \n 3 month window before and after dx",
+                                     "5: Insured by Medicaid at dx only"),
+    font.legend=c(8, "bold"),
+    legend = c("right"),
+    palette=c("black", "maroon2", "cyan3", "red", "orange", "green"),
+    font.x = c(18, "bold"),
+    font.y = c(18, "bold"),
+    xlim=c(0, 60),
+    ylim=c(0, 1),
+    censor.size=0.5,
+    font.tickslab = c(16, "bold"),
+    pval=TRUE,
+    risk.table = FALSE,
+    risk.table.fontsize=3,
+    tables.height = 0.2,
+    tables.theme = theme_cleantable())
+p
+
+table(seer0to19$Bradley_def)
+
+ggsave(filename = "Bradley_def2_3 KM plot 0 to 19.png",
        width = 11, height = 8.5, units = "in", bg="white") 
 
-table(seer0to19$enroll3_cat, seer0to19$Primary_Payer_at_DX)
+
+p1<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ Bradley_def2_3, data =seer20to39), 
+    xlab = "Months from diagnosis", 
+    ylab = "Cancer survival proportion",
+    legend.title = "",
+    legend.labs = c("0: Not insured by Medicaid within 7 month window", 
+                                     "1: Not insured or unknown Medicaid \n insurance within 7 months",
+                                     "2: Insured by Medicaid within 3 mo before dx but not after", 
+                                     "3: Insured by Medicaid within the 3 months after the dx but not before",
+                                     "4: Insured by Medicaid within both the \n 3 month window before and after dx",
+                                     "5: Insured by Medicaid at dx only"),
+    font.legend=c(8, "bold"),
+    legend = c("right"),
+    palette=c("black", "maroon2", "cyan3", "red", "orange", "green"),
+    font.x = c(18, "bold"),
+    font.y = c(18, "bold"),
+    xlim=c(0, 60),
+    ylim=c(0, 1),
+    censor.size=0.5,
+    font.tickslab = c(16, "bold"),
+    pval=TRUE,
+    risk.table = FALSE,
+    risk.table.fontsize=3,
+    tables.height = 0.2,
+    tables.theme = theme_cleantable())
+p1
+
+ggsave(filename = "Bradley_def2_3 KM plot 20 to 39.png",
+       width = 11, height = 8.5, units = "in", bg="white") 
+
+table(seer0to39$insurance2, seer0to39$Bradley_def2, useNA = "always")
 ```
-
-
 
 # Cox proportional hazards models
 ```{r}
@@ -704,7 +867,7 @@ summary(res.cox3)
 # Overall for San Antonio conference
 ```{r}
 # census tract poverty indicator
-res.cox4 <- coxph(Surv(survmo, can_dead) ~ timing +race_cat +age_cat + Census_Tract_Poverty_Indicator, data = dfp) # Model adjusted for race age and a measure of poverty
+res.cox4 <- coxph(Surv(survmo, can_dead) ~ enroll3_cat3 +race_cat + Census_Tract_Poverty_Indicator, data = seer20to39) # Model adjusted for race age and a measure of poverty
 res.cox4
 summary(res.cox4)
 ```
