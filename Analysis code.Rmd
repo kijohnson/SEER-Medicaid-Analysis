@@ -152,19 +152,19 @@ pacman::p_load(readr, dplyr, tidyverse, lubridate, survival, survminer, hablar)
 # Data management 
 # Exclude those over 39 years old and export data to make the datasets more manageeable on import
 ```{r}
-# # exclude from seer2 first
+# exclude from seer first
 # seer_0to39<-seer %>%
 #   filter(Agerecodewithsingleages_and_100<40)
 # 
-# # get ids to limit enrollment file
+# get ids to limit enrollment file
 # 
 # ids<-seer_0to39$patient_id
 
-#enroll_seerids<-enroll %>%
- #filter(patient_id %in% ids)
+# enroll_seerids<-enroll %>%
+ # filter(patient_id %in% ids)
 
 ```
-# export these data as csv files
+# export these data as csv files for quicker import
 ```{r}
 # write.csv(seer_0to39,"seer0to39.csv", row.names = FALSE)
 # 
@@ -178,14 +178,12 @@ enroll_seerids<-read_csv("enroll_seerids.csv")
 mcseer <- read_csv("/Volumes/kijohnson/Active/mcseer_dsb/mcseer_dsb.csv") # Derek's file that contains continuity of enrollment variables
 ```
 
+# Identify ids to exclude where patient has files in multiple states
 ```{r}
  df<-enroll_seerids %>% 
    find_duplicates(patient_id, YEAR)
  
 x <- unique(df$patient_id) # 841 vector of unique ids to exclude
-
-df2<-seer0to39 %>% 
-  find_duplicates(patient_id) # 967 duplicates, these will get excluded based on first malignant primary
 ```
 
 # Reduce dataset to variables needed for analysis
@@ -395,248 +393,8 @@ definitions from Bradley et al, Cancer
 1. not insured by Medicaid--does not link
 2. insured by Medicaid within the 12 months before dx
 3. insured by Medicaid only in the month of the dx or within the 12 months after the dx
-4. insured both before and after dx categoriized as insured before dx
+4. insured both before and after dx categorized as insured before dx
 
-Algorithm (in development)
--need month and year of dx in Medicaid file
--need to create month and year of enrollment in Medicaid file
--if any of enrollment dates are within year before Medicaid enrollment, then give a 1, else if any of enrollment dates are within the month of dx or within 12 months after give a 0
--what about discontinuous enrollment?
-
-```{r}
-# # if not in Medicaid 0
-# # if month/year diagnosis <month/year of enrollment and > month/year of enrollment -12, 1
-# # if enrollment date is in month of diagnosis or only within 12 months after, 2
-# # if enrollment date is before month of diagnosis and is insured after diagnosis, 3
-# df<-seer0to19 %>% 
-#   select(patient_id, Month_of_diagnosis_recode, Year_of_diagnosis)
-# # merge in month and year of dx into enroll_seerids file
-# 
-# enroll<-left_join(enroll_seerids, df, by="patient_id" ) # puts month and year of dx in enrollment file
-# y <-unique(df$patient_id)
-# 
-# 
-# test<-as_tibble(enroll) %>%
-#   slice(1:61796) # selects all rows (not necessary but can be changed to smaller row number)
-# 
-# # if they have a value of 1 to 9, this means they were enrolled at some point during the year
-# test2<-test %>% 
-#     mutate(enroll_any_part_year = if_else(
-#       MEDICAID_ELIG_CD1>0 & MEDICAID_ELIG_CD1<9| # eligible in Jan
-#       MEDICAID_ELIG_CD2>0 & MEDICAID_ELIG_CD2<9| # Feb
-#       MEDICAID_ELIG_CD3>0 & MEDICAID_ELIG_CD3<9| # Mar
-#       MEDICAID_ELIG_CD4>0 & MEDICAID_ELIG_CD4<9| # April
-#       MEDICAID_ELIG_CD5>0 & MEDICAID_ELIG_CD5<9| # May
-#       MEDICAID_ELIG_CD6>0 & MEDICAID_ELIG_CD6<9| # June
-#       MEDICAID_ELIG_CD7>0 & MEDICAID_ELIG_CD7<9| # July
-#       MEDICAID_ELIG_CD8>0 & MEDICAID_ELIG_CD8<9| # August
-#       MEDICAID_ELIG_CD9>0 & MEDICAID_ELIG_CD9<9| # Sept
-#       MEDICAID_ELIG_CD10>0 & MEDICAID_ELIG_CD10<9| # Oct
-#       MEDICAID_ELIG_CD11>0 & MEDICAID_ELIG_CD11<9| # Nov
-#       MEDICAID_ELIG_CD12>0 & MEDICAID_ELIG_CD12<9, YEAR, NULL)) # Dec 
-# 
-# # enrolled during dx year
-# test2 <- test2 %>%
-#   mutate(enroll_dx_year = 
-#            if_else(enroll_any_part_year == Year_of_diagnosis, "enrolled dx year",  # this means they were enrolled during the diagnosis year
-#            if_else(enroll_any_part_year < Year_of_diagnosis, "enrolled before dx year", # this means they were enrolled before the diagnosis year
-#            if_else(enroll_any_part_year >Year_of_diagnosis, "enrolled after dx year", NULL)))) # this means they were enrolled after the diagnosis year
-# 
-# # quick and dirty enrolled before dx year, enrolled after dx year, enrolled dx year (need to fix no information before 2006 on Medicaid linkage (use months) and increase precision on month of enrollment )
-# test3 <- test2 %>%
-#   select(patient_id, YEAR, enroll_any_part_year, Year_of_diagnosis, enroll_dx_year) %>% 
-#   group_by(patient_id) %>% # summarize on patient_id level 
-#   mutate(before_dx = if_else(enroll_dx_year == "enrolled before dx year", 1, 0),  # This assigns a 1 if they were enrolled before dx year
-#          after_dx = if_else(enroll_dx_year == "enrolled after dx year", 1, 0),  # This assigns a 1 if they were enrolled after dx year
-#          at_dx = if_else(enroll_dx_year == "enrolled dx year", 1, 0)) %>%  # This assigns a 1 if they were enrolled in the dx year
-#   summarize(before_dx = sum(before_dx), after_dx = sum(after_dx), at_dx = sum(at_dx)) %>% # sums how many years they were enrolled before, after and at diagnosis. At diagnosis should be 1?
-#   mutate(timing = if_else(before_dx >=1 & after_dx >=1 & at_dx >=1, 0, 1 ))
-# 
-# table(test3$timing)
-# 
-# test3$timing <- factor(test3$timing, levels = c(0:1), labels = c("Enrolled before and after dx year", "Not enrolled before and after dx year"))
-# 
-# seer0to19 <- left_join(seer0to19, test3, by = "patient_id")
-# 
-# table(seer0to19$In_Medicaid_Flag, seer0to19$timing, useNA = "always")
-# 
-# seer0to19 <- seer0to19 %>%
-#   mutate(timing = if_else(In_Medicaid_Flag == 0, "Not enrolled in Medicaid", as.character(timing)))
-```
-
-# Try to implement Derek's method to define timing
-```{r}
-# Make 96 month enrollment file with one line per unique id
-# write function to give each observation new variables for each year
-# df <- enroll %>%
-#   select(patient_id, STATE_CD, YEAR, MEDICAID_ELIG_CD1, MEDICAID_ELIG_CD2,  MEDICAID_ELIG_CD3,  MEDICAID_ELIG_CD4,  MEDICAID_ELIG_CD5, MEDICAID_ELIG_CD6, MEDICAID_ELIG_CD7,  MEDICAID_ELIG_CD8,  MEDICAID_ELIG_CD9,  MEDICAID_ELIG_CD10, MEDICAID_ELIG_CD11, MEDICAID_ELIG_CD12, Month_of_diagnosis_recode, Year_of_diagnosis)
-# 
-# names(enroll)
-# 
-# df2 <- pivot_wider(df, id_cols = c(patient_id), names_from = YEAR, values_from = 
-#  c(STATE_CD, MEDICAID_ELIG_CD1, MEDICAID_ELIG_CD2, MEDICAID_ELIG_CD3, MEDICAID_ELIG_CD4, MEDICAID_ELIG_CD5, MEDICAID_ELIG_CD6,  MEDICAID_ELIG_CD7,MEDICAID_ELIG_CD8, MEDICAID_ELIG_CD9, MEDICAID_ELIG_CD10, MEDICAID_ELIG_CD11, MEDICAID_ELIG_CD12))
-# 
-# dput(names(df2))
-# 
-# colnames(df2)<- c("patient_id", "STATE_CD_2006", "STATE_CD_2007", "STATE_CD_2008", 
-# "STATE_CD_2009", "STATE_CD_2010", "STATE_CD_2011", "STATE_CD_2012", 
-# "STATE_CD_2013", 
-# "M01", "M13", "M25", "M37", "M49", "M61", "M73", "M85",
-# "M02", "M14", "M26", "M38", "M50", "M62", "M74", "M86", 
-# "M03", "M15", "M27", "M39", "M51", "M63", "M75", "M87", 
-# "M04", "M16", "M28", "M40", "M52", "M64", "M76", "M88", 
-# "M05", "M17", "M29", "M41", "M53", "M65", "M77", "M89", 
-# "M06", "M18", "M30", "M42", "M54", "M66", "M78", "M90", 
-# "M07", "M19", "M31", "M43", "M55", "M67", "M79", "M91", 
-# "M08", "M20", "M32", "M44", "M56", "M68", "M80", "M92", 
-# "M09", "M21", "M33", "M45", "M57", "M69", "M81", "M93", 
-# "M10", "M22", "M34", "M46", "M58", "M70", "M82","M94", 
-# "M11", "M23", "M35", "M47", "M59", "M71", "M83", "M95", 
-# "M12", "M24", "M36", "M48", "M60", "M72", "M84", "M96")
-# 
-# df3<-df2 %>% 
-#   select("patient_id", sort(colnames(.)))
-# 
-# # replace null with 0 and values 1-8 with 1, replace 9 with NA
-# for (i in seq_along(df3)) {
-#     df3[[i]][df3[[i]] %in% c("NULL")] <- 0
-#     df3[[i]][df3[[i]] %in% c(9)] <- NA
-#     df3[[i]][df3[[i]] %in% c(1:8)] <- 1
-# }
-# 
-# # need to exclude those with vectors for values before making variables numeric (this is due to multiple state ids)
-# 
-# df3 <- df3 %>% 
-#   filter(!patient_id %in% x)
-# 
-# # convert months to numeric (they were lists)
-# df4 <- df3 %>% 
-#      mutate_at(c(2:97), as.numeric)
-# 
-# class(df4$patient_id) # check example
-```
-
-# need to merge in diagnosis month year as a month number
-```{r}
-# add month number to seer 0 to 19
-# Month_of_diagnosis_recode, Year_of_diagnosis
-# seer0to19 <- seer0to19 %>%
-#   mutate(dx_mo_no = case_when(Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 1 ~ 1,
-#                               Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 2 ~ 2,
-#                               Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 3 ~ 3,
-#                               Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 4 ~ 4,
-#                               Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 5 ~ 5,
-#                               Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 6 ~ 6,
-#                               Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 7 ~ 7,
-#                               Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 8 ~ 8,
-#                               Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 9 ~ 9,
-#                               Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 10 ~ 10,
-#                               Year_of_diagnosis == 2006 & Month_of_diagnosis_recode == 11 ~ 11,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 12 ~ 12,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 1 ~ 13,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 2 ~ 14,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 3 ~ 15,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 4 ~ 16,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 5 ~ 17,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 6 ~ 18,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 7 ~ 19,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 8 ~ 20,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 9 ~ 21,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 10 ~ 22,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 11 ~ 23,
-#                               Year_of_diagnosis == 2007 & Month_of_diagnosis_recode == 12 ~ 24,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 1 ~ 25,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 2 ~ 26,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 3 ~ 27,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 4 ~ 28,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 5 ~ 29,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 6 ~ 30,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 7 ~ 31,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 8 ~ 32,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 9 ~ 33,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 10 ~ 34,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 11 ~ 35,
-#                               Year_of_diagnosis == 2008 & Month_of_diagnosis_recode == 12 ~ 36,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 1 ~ 37,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 2 ~ 38,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 3 ~ 39,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 4 ~ 40,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 5 ~ 41,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 6 ~ 42,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 7 ~ 43,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 8 ~ 44,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 9 ~ 45,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 10 ~ 46,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 11 ~ 47,
-#                               Year_of_diagnosis == 2009 & Month_of_diagnosis_recode == 12 ~ 48,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 1 ~ 49,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 2 ~ 50,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 3 ~ 51,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 4 ~ 52,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 5 ~ 53,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 6 ~ 54,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 7 ~ 55,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 8 ~ 56,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 9 ~ 57,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 10 ~ 58,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 11 ~ 59,
-#                               Year_of_diagnosis == 2010 & Month_of_diagnosis_recode == 12 ~ 60,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 1 ~ 61,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 2 ~ 62,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 3 ~ 63,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 4 ~ 64,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 5 ~ 65,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 6 ~ 66,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 7 ~ 67,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 8 ~ 68,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 9 ~ 69,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 10 ~ 70,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 11 ~ 71,
-#                               Year_of_diagnosis == 2011 & Month_of_diagnosis_recode == 12 ~ 72,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 1 ~ 73,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 2 ~ 74,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 3 ~ 75,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 4 ~ 76,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 5 ~ 77,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 6 ~ 78,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 7 ~ 79,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 8 ~ 80,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 9 ~ 81,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 10 ~ 82,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 11 ~ 83,
-#                               Year_of_diagnosis == 2012 & Month_of_diagnosis_recode == 12 ~ 84,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 1 ~ 85,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 2 ~ 86,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 3 ~ 87,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 4 ~ 88,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 5 ~ 89,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 6 ~ 90,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 7 ~ 91,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 8 ~ 92,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 9 ~ 93,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 10 ~ 94,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 11 ~ 95,
-#                               Year_of_diagnosis == 2013 & Month_of_diagnosis_recode == 12 ~ 96))
-# 
-# # scratch notes
-# # create 96 variables for cancer dx C01-C96 with a 1 in the month of dx and 0s in all others
-# # if M01 == 0 & C01 == 0, E01 = 0, # not enrolled
-# # if M01 == 0 & C01 == 1, E01 = 0, # not enrolled 
-# # if M01 == 1 & C01 == 0, E01 ==1, # enrolled before before dx 
-# # if M02 == 1 & C01 == 1, E01 ==1, # enrolled during dx
-# # 
-# # # might also use column indices 2-97 to code
-# # 
-# 
-# # pivot long and then group_by to find first month that = 0
-# df5 <- df4 %>%
-#   pivot_longer(cols= starts_with("M"), names_to = "month")
-# 
-# df6<-df5 %>%
-#   group_by(patient_id) %>%
-#   arrange(patient_id, month) %>%
-#   filter(row_number(value)==1) # this tells you the first month that they were a 0 (not enrolled)
-```
 
 # Exclude those with missing data on variables used in the analysis
 ```{r}
@@ -645,7 +403,6 @@ seer0to39<-seer0to39 %>%
 
 
 # exclude multiple state medicaid ids within a single year
-
 seer0to39 <- seer0to39 %>% 
   filter(!patient_id %in% x)
 ```
@@ -659,59 +416,6 @@ mcseer2 <- mcseer %>%
 seer0to39<-left_join(seer0to39, mcseer2, by = c("patient_id"))
 ```
 
-# data management for new continuity variables
-```{r}
-table(seer0to39$pre_mo, seer0to39$post_mo)
-
-# 3 mo
-seer0to39 <- seer0to39 %>%
-  mutate(enroll3_cat = case_when(In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(20,21) ~ 0, # not enrolled in Medicaid/enrolled in private
-                                In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(31,35,60,61,62,63,64,65,66,67,68, 99,10)~1, # all other non-medicaid categories
-                                In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(1,2)~2, # uninsured
-                                In_Medicaid_Flag ==1 & pre_mo3 >0 & post_mo3 >0 ~ 3, # enrolled in the 3 month window before and after
-                                In_Medicaid_Flag ==1 & pre_mo3 == 0 & post_mo3 == 0 ~ 4, # not enrolled  in either the 3 month window before or after
-                                In_Medicaid_Flag ==1 & pre_mo3 == 0 & post_mo3 >0 ~ 5, # enrolled in the three month window after
-                                In_Medicaid_Flag ==1 & pre_mo3 > 0 & post_mo3 == 0 ~ 6 # enrolled in the three month window before but not after
-                                ))
-
-
-# 6 mo
-seer0to39 <- seer0to39 %>%
-  mutate(enroll6_cat = case_when(In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(20,21) ~ 0, # not enrolled in Medicaid/enrolled in private
-                                In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(31,35,60,61,62,63,64,65,66,67,68, 99,10)~1, # all other non-medicaid categories
-                                In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(1,2)~2, # uninsured
-                                In_Medicaid_Flag ==1 & pre_mo6>0 & post_mo6>0 ~ 3, # enrolled in the 3 month window before and after
-                                In_Medicaid_Flag ==1 & pre_mo6 == 0 & post_mo6 == 0 ~ 4, # not enrolled  in either the 3 month window before or after
-                                In_Medicaid_Flag ==1 & pre_mo6 == 0 & post_mo6 >0 ~ 5, # enrolled in the three month window after
-                                In_Medicaid_Flag ==1 & pre_mo6 > 0 & post_mo6 == 0 ~ 6, # enrolled in the three month window before but not after
-                                ))
-
-# 12 mo
-seer0to39 <- seer0to39 %>%
-  mutate(enroll12_cat = case_when(In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(20,21) ~ 0, # not enrolled in Medicaid/enrolled in private
-                                In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(31,35,60,61,62,63,64,65,66,67,68, 99,10)~1, # all other non-medicaid categories
-                                In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(1,2)~2, # uninsured
-                                In_Medicaid_Flag ==1 & pre_mo12>0 & post_mo12>0 ~ 3, # enrolled in the 3 month window before and after
-                                In_Medicaid_Flag ==1 & pre_mo12 == 0 & post_mo12 == 0 ~ 4, # not enrolled  in either the 3 month window before or after
-                                In_Medicaid_Flag ==1 & pre_mo12 == 0 & post_mo12 >0 ~ 5, # enrolled in the three month window after
-                                In_Medicaid_Flag ==1 & pre_mo12 > 0 & post_mo12 == 0 ~ 6, # enrolled in the three month window before but not after
-                                ))
-
-# 3 mo
-
-table(seer0to39$enroll3_cat, seer0to39$Primary_Payer_at_DX, useNA = "always")
-
-seer0to39$enroll3_cat <- factor(seer0to39$enroll3_cat, levels = c(0:6), labels = c("Not enrolled in Medicaid/private", "Not enrolled in Medicaid/other", "Enrolled in the 3 month window before and after", "Uninsured","Not enrolled in either the 3 month window before or after", "Enrolled in the 3 month window after but not before", "Enrolled in the 3 month window before but not after"))
-table(seer0to39$enroll3_cat,  seer0to39$can_dead,  useNA = "always")
-
-# 6 mo
-seer0to39$enroll6_cat <- factor(seer0to39$enroll6_cat, levels = c(0:6), labels = c("Not enrolled in Medicaid/private", "Not enrolled in Medicaid/other", "Enrolled in the 6 month window before and after", "Uninsured","Not enrolled in either the 6 month window before or after", "Enrolled in the 6 month window after but not before", "Enrolled in the 6 month window before but not after"))
-table(seer0to39$enroll6_cat,  seer0to39$can_dead,  useNA = "always")
-
-# 12 mo
-seer0to39$enroll12_cat <- factor(seer0to39$enroll12_cat, levels = c(0:6), labels = c("Not enrolled in Medicaid/private", "Not enrolled in Medicaid/other", "Enrolled in the 12 month window before and after", "Uninsured","Not enrolled in either the 12 month window before or after", "Enrolled in the 12 month window after but not before", "Enrolled in the 12 month window before but not after"))
-table(seer0to39$enroll12_cat,  seer0to39$can_dead,  useNA = "always")
-```
 
 # Another strategy
 - Use Derek's status 3 variable that is coded as follows:
@@ -723,43 +427,6 @@ table(seer0to39$enroll12_cat,  seer0to39$can_dead,  useNA = "always")
 
 - for those coded as 9 use the following annotation:
 - use In_Medicaid_Flag = 1 and coding used for In_Medicaid_Flag = 0
-```{r}
-seer0to39 <- seer0to39 %>%
-  mutate(enroll3_cat2 = case_when(In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(20,21) ~ 0, # not enrolled in Medicaid/enrolled in private
-                                In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(31,35,60,61,62,63,64,65,66,67,68, 99,10)~1, # all other non-medicaid categories
-                                In_Medicaid_Flag ==0 & Primary_Payer_at_DX %in% c(1,2)~2, # uninsured
-                                In_Medicaid_Flag ==1 & (status3 == 0|is.na(status3))  ~ 3, # not enrolled in Medicaid in dx month
-                                In_Medicaid_Flag ==1 & status3 == 1 & pre_mo3 >0 & post_mo3 >0 ~ 4, # enrolled in Medicaid in DX month and before and after
-                                In_Medicaid_Flag ==1 & status3 == 1 & pre_mo3 >0  & (post_mo3 == 0|is.na(post_mo3)) ~ 5, # enrolled in Medicaid in DX month and before only
-                                In_Medicaid_Flag ==1 & status3 == 1 & (pre_mo3 == 0|is.na(pre_mo3))  & post_mo3 >0  ~ 6, # enrolled in Medicaid in DX month and after only
-                                In_Medicaid_Flag ==1 & status3 == 2  ~ 7, # not enrolled in Medicaid in DX month, BUT was enrolled at least 1 of the 3 mos PRIOR
-                                In_Medicaid_Flag ==1 & status3 == 3  ~ 8, # not enrolled in Medicaid in DX month, BUT was enrolled at least 1 of the 3 mos AFTER
-                                In_Medicaid_Flag ==1 & status3 == 9 & Primary_Payer_at_DX %in% c(20,21) ~ 9, #  missing Medicaid enrollment status in DX month/private
-                                In_Medicaid_Flag ==1 & status3 == 9 & Primary_Payer_at_DX %in%  c(31,35,60,61,62,63,64,65,66,67,68, 99,10) ~ 10,#  missing Medicaid enrollment status in DX month/other categories
-                                In_Medicaid_Flag ==1 & status3 == 9 & Primary_Payer_at_DX %in% c(1,2) ~ 11)) # missing Medicaid enrollment status in DX month/uninsured
-
-
-seer0to39$enroll3_cat2 <- factor(seer0to39$enroll3_cat2, levels = c(0:11), labels = 
-                                   c("0:NM Private", 
-                                     "1: NM Other", 
-                                     "2: NM Uninsured",
-                                     "3: MNE in dx month", 
-                                     "4: ME in dx month and before and after",
-                                     "5: ME in dx month and before",
-                                     "6: ME in dx month and after",
-                                     "7: MNE in dx month but enrolled >= 1 month prior",
-                                     "8: MNE in dx month but enrolled >= 1 month after",
-                                     "9: MME in dx month/private",
-                                     "10: MME in dx month/other",
-                                     "11: MME in dx month/uninsured"
-                                     ))
-
-test <- seer0to39 %>%
-  group_by(In_Medicaid_Flag, Primary_Payer_at_DX, status3) %>%
-  count(enroll3_cat2)
-
-table(seer0to39$enroll3_cat2, seer0to39$Primary_Payer_at_DX, useNA = "always")
-```
 
 # another simpler one
 ```{r}
@@ -802,7 +469,7 @@ table(seer0to39$enroll3_cat3, seer0to39$insurance, useNA = "always")
 ```
 
 
-# make separate dataframes for 0 to 19 and 15 to 39
+# make separate dataframes for 0 to 19 and 20 to 39
 ```{r}
 # make separate dataframes for 0 to 19 and 15 to 39
 seer0to19 <- seer0to39 %>%
@@ -812,31 +479,6 @@ seer20to39 <- seer0to39 %>%
   filter(age_cat %in% c("20-39"))
 ```
 
-# examine payor variable by enroll_cat variables
-```{r}
-# # filter where In_Medicaid == 1 
-# seer0to19M<-seer0to19 %>%
-#   filter(In_Medicaid_Flag ==1)
-# 
-# table(seer0to19M$enroll3_cat, seer0to19M$insurance2, useNA = "always")
-# 
-# # filter where In_Medicaid == 1
-# seer20to39M<-seer20to39 %>%
-#   filter(In_Medicaid_Flag ==1)
-# 
-# table(seer20to39M$enroll3_cat, seer20to39M$insurance2, useNA = "always")
-# 
-# table(seer0to19M$pre_mo3, seer0to19M$post_mo3, useNA = "always")
-# 
-# seer0to19M <- seer0to19M %>%
-#  mutate(any_pre3 = case_when(pre_mo3 >0 ~1,
-#                              pre_mo3 == 0 ~0)) %>%
-#   mutate(any_post3 = case_when(post_mo3 >0 ~1,
-#                                post_mo3 == 0 ~0))
-# 
-# table(seer0to19M$any_pre3, seer0to19M$any_post3, useNA = "always")
-
-```
 # Survival plots (# In_Medicaid_flag)
 ```{r}
 # In_Medicaid_flag
@@ -956,35 +598,6 @@ dev.off()
 
 ```
 
-# Survival plot by timing
-```{r}
-table(seer0to19$timing)
-
-dfp <- seer0to19 %>%
-  filter(timing %in% c("Enrolled before and after dx year", "Not enrolled before and after dx year"))
-
-p<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ timing, data =dfp), 
-    xlab = "Months from diagnosis", 
-    ylab = "Cancer survival proportion",
-    legend.title = "",
-    legend.labs = c("Enrolled before and after dx", "Not enrolled before and after dx"),
-    font.legend=c(8, "bold"),
-    palette=c("black", "blue", "gray", "red"),
-    font.x = c(18, "bold"),
-    font.y = c(18, "bold"),
-    #xlim=c(0, 60),
-    ylim=c(0, 1),
-    censor.size=0.5,
-    font.tickslab = c(16, "bold"),
-    pval=TRUE,
-    risk.table = TRUE,
-    risk.table.fontsize=3,
-    tables.height = 0.2,
-    tables.theme = theme_cleantable())
-p
-
-ggsave("Medicaid_enrollment_timing.pdf")
-```
 
 # Survival plot by Derek's 3 month window variables
 ```{r}
@@ -1042,117 +655,6 @@ ggsave(filename = "Enroll_cat6 KM plot 20 to 39.png",
 table(seer0to19$enroll3_cat, seer0to19$Primary_Payer_at_DX)
 ```
 
-# Survival plot by Derek's 6 month window variables
-```{r}
-
-p<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ enroll6_cat, data =seer0to19), 
-    xlab = "Months from diagnosis", 
-    ylab = "Cancer survival proportion",
-    legend.title = "",
-    legend.labs = c("Not enrolled  \n in Medicaid/private at dx", "Not enrolled  \n in Medicaid/other", "Not enrolled \n Uninsured", "Enrolled in the 6 month \n window before and after", "Not enrolled in either the 6 month \n window before or after", "Enrolled in the 6 month \n window after but not before", "Enrolled in the 6 month \n window before but not after"),
-    font.legend=c(8, "bold"),
-    legend = c("right"),
-    palette=c("black", "blue", "gray", "red", "orange", "green", "purple"),
-    font.x = c(18, "bold"),
-    font.y = c(18, "bold"),
-    #xlim=c(0, 60),
-    ylim=c(0, 1),
-    censor.size=0.5,
-    font.tickslab = c(16, "bold"),
-    pval=TRUE,
-    risk.table = FALSE,
-    risk.table.fontsize=3,
-    tables.height = 0.2,
-    tables.theme = theme_cleantable())
-p
-
-survfit(Surv(survmo, can_dead) ~ enroll6_cat, data = seer0to19)
-
-ggsave(filename = "Enroll_cat6 KM plot 0 to 19.png",
-       width = 11, height = 8.5, units = "in", bg="white") 
-
-p1<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ enroll6_cat, data =seer20to39), 
-    xlab = "Months from diagnosis", 
-    ylab = "Cancer survival proportion",
-    legend.title = "",
-    legend.labs = c("Not enrolled  \n in Medicaid/private at dx", "Not enrolled  \n in Medicaid/other", "Not enrolled \n Uninsured", "Enrolled in the 6 month \n window before and after", "Not enrolled in either the 6 month \n window before or after", "Enrolled in the 6 month \n window after but not before", "Enrolled in the 6 month \n window before but not after"),
-    font.legend=c(8, "bold"),
-    legend = c("right"),
-    palette=c("black", "blue", "gray", "red", "orange", "green", "purple"),
-    font.x = c(18, "bold"),
-    font.y = c(18, "bold"),
-    #xlim=c(0, 60),
-    ylim=c(0, 1),
-    censor.size=0.5,
-    font.tickslab = c(16, "bold"),
-    pval=TRUE,
-    risk.table = FALSE,
-    risk.table.fontsize=3,
-    tables.height = 0.2,
-    tables.theme = theme_cleantable())
-p1
-
-ggsave(filename = "Enroll_cat6 KM plot 20 to 39.png",
-       width = 11, height = 8.5, units = "in", bg="white") 
-
-```
-# Survival plot by Derek's 12 month window variables
-```{r}
-
-p<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ enroll12_cat, data =seer0to19), 
-    xlab = "Months from diagnosis", 
-    ylab = "Cancer survival proportion",
-    legend.title = "",
-    legend.labs = c("Not enrolled  \n in Medicaid/private at dx", "Not enrolled  \n in Medicaid/other", "Not enrolled \n Uninsured", "Enrolled in the 12 month \n window before and after", "Enrolled in the 12 month \n window after but not before", "Enrolled in the 12 month \n window before but not after"),
-    font.legend=c(8, "bold"),
-    legend = c("right"),
-    palette=c("black", "blue", "gray", "red", "orange", "green"),
-    font.x = c(18, "bold"),
-    font.y = c(18, "bold"),
-    #xlim=c(0, 60),
-    ylim=c(0, 1),
-    censor.size=0.5,
-    font.tickslab = c(16, "bold"),
-    pval=TRUE,
-    risk.table = FALSE,
-    risk.table.fontsize=3,
-    tables.height = 0.2,
-    tables.theme = theme_cleantable())
-p
-
-ggsave(filename = "Enroll_cat12 KM plot 0 to 19.png",
-       width = 11, height = 8.5, units = "in", bg="white") 
-
-p1<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ enroll12_cat, data =seer20to39), 
-    xlab = "Months from diagnosis", 
-    ylab = "Cancer survival proportion",
-    legend.title = "",
-    legend.labs = c("Not enrolled  \n in Medicaid/private at dx", "Not enrolled  \n in Medicaid/other", "Not enrolled \n Uninsured", "Enrolled in the 12 month \n window before and after", "Enrolled in the 12 month \n window after but not before", "Enrolled in the 12 month \n window before but not after"),
-    font.legend=c(8, "bold"),
-    legend = c("right"),
-    palette=c("black", "blue", "gray", "red", "orange", "green"),
-    font.x = c(18, "bold"),
-    font.y = c(18, "bold"),
-    #xlim=c(0, 60),
-    ylim=c(0, 1),
-    censor.size=0.5,
-    font.tickslab = c(16, "bold"),
-    pval=TRUE,
-    risk.table = FALSE,
-    risk.table.fontsize=3,
-    tables.height = 0.2,
-    tables.theme = theme_cleantable())
-p1
-
-ggsave(filename = "Enroll_cat12 KM plot 20 to 39.png",
-       width = 11, height = 8.5, units = "in", bg="white") 
-
-```
-
-```{r}
-test <- mcseer %>% 
-  filter(patient_id == "SRMD20150000334")
-```
 
 
 # Cox proportional hazards models
