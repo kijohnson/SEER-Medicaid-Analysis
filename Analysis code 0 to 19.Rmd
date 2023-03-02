@@ -1,0 +1,1517 @@
+---
+title: "SEER Medicaid"
+author: "Kim Johnson"
+date: '2022-06-06'
+output: html_document
+---
+
+# Open libraries
+```{r}
+pacman::p_load(readr, dplyr, tidyverse, lubridate, survival, survminer, hablar, table1, patchwork, xlsx)
+```
+
+# Import files sent by SEER Medicaid and get data into right columns, assign column names
+```{r, eval =FALSE}
+# # Medicaid enrollment--imports fixed width columns and gives them names
+# enroll <- read_fwf('medicaid.enroll.txt', 
+#                fwf_cols(patient_id = 15, STATE_CD = 2, YEAR = 4, DOB_MATCH_SCORE_HI = 1, SEX_MATCH_SCORE_HI = 1,
+#                        ID_MATCH_SCORE_HI=1, MATCH_SCORE_HI=2, MEDICAID_ELIG_CD1=1, MEDICAID_ELIG_CD2=1,
+#                       MEDICAID_ELIG_CD3=1, MEDICAID_ELIG_CD4=1, MEDICAID_ELIG_CD5=1, MEDICAID_ELIG_CD6=1,
+#                       MEDICAID_ELIG_CD7=1, MEDICAID_ELIG_CD8=1, MEDICAID_ELIG_CD9=1, MEDICAID_ELIG_CD10=1,
+#                         MEDICAID_ELIG_CD11=1, MEDICAID_ELIG_CD12=1), 
+#                skip = 0)
+
+# # SEER file 
+# 
+# seer<-read_fwf('medicaid.cancer 2.txt', na=".", fwf_positions(
+# c(1, 16,18,20,21,22,24,25,28,31,33,35,39,41,45,46,50,51,55,56,57,58,59,62,64,66,67,69, 71, 72,73,74,75,76,77,78,79,80,81,82,83,84,86,88,90,92,94,95,96,97,98,99,100,103,106,109, 111,114,117,120,123,126,129,132,135,138,141,144,147,150,153,156, 159,161,163,165,167,168,174,180,186,188,189,190,192,193,194,195,196,197,199, 200,201,203,205,210,213,216,217,219,224,227,228,229,230,231,233,235,236,238,241,242, 243,248, 253, 254, 255,256, 258,263,264,265,266,267,268,269,270,271,273,279,282,285,288,291,293,295,297,299, 300,301,302,303,304,305,306,308,310,316,347,353,359,365,366,367,368,369,378,380,382,384,388,401,402,403,404,405, 406,408,412,414, 419, 423,425,427,429, 431,433,437,438,439,440,441,442,443,445, 447, 448, 452, 456, 460, 464,465,466,467,468,469,470, 471,472,473,474,475,476,477, 479, 480,485,490,495,500,505, 510,511,512,513,514,515,519,520, 521,524,525,526,530,532), 
+#   
+# c(15,17,19,20,21,23,24,27,30,32,34,38,40,44,45,49,50,54,55,56,57,58,61,63,65,66,68,70,71, 72,73,74,75,76,77,78,79,80,81,82,83,84,86,88,90,93,94,95,96,97,98, 99,102,105,108,110,113,116,119,122,125,128,131,134,137, 140, 143,146,149,152,155,158,160,162,164,166,167,173,179, 185,187,188,189,191, 192,193,194,195,195, 198,199, 200,202,204,209,212,215,216,218,220, 226,227,228,229,230,232,234,235,237,240,241,242,247, 252, 253, 254,255,257, 259, 263,264,265,266,267,268,269,270, 272,273,281,284,287,290,292,294,295,298,299, 300, 301,302,303,304,305,307, 309,311,316,352,358, 364,365,366,367,368,369, 379,381,383,387,391,401,402,403,404,405, 407,411,413,417, 422,424,426,428,430, 432,436,437,438,439,440,441,442,444,446, 447, 451, 455,459,463,464, 465, 466,467,468,469,470, 471,472,473,474,475,476,477,479, 484,489,494,499,504,509,510,511,512,513,514,515,519,520, 523,524,525,529,531,534)))
+# 
+# colnames(seer)<- c("patient_id", "SEER_registry", "SEERregistrywithCAandGAaswholes", 
+# "Louisiana20051stvs2ndhalfofyear", "Marital_status_at_diagnosis", 
+# "Race_ethnicity", "sex", "Agerecodewithsingleages_and_100", "agerecodewithsingle_ages_and_85", 
+# "Sequence_number", "Month_of_diagnosis", "Year_of_diagnosis", 
+# "Month_of_diagnosis_recode", "Primary_Site", "Laterality", "Histology_ICD_O_2", 
+# "Behavior_code_ICD_O_2", "Histologic_Type_ICD_O_3", "Behavior_code_ICD_O_3", 
+# "Grade", "Diagnostic_Confirmation", "Type_of_Reporting_Source", 
+# "EOD_10_size_1988_2003", "EOD_10_extent_1988_2003", "EOD10Prostatepath_ext_1995_2003", 
+# "EOD_10_nodes_1988_2003", "Regional_nodes_positive_1988", "Regional_nodes_examined_1988", 
+# "Expanded_EOD_1_CP53_1973_1982", "Expanded_EOD_2_CP54_1973_1982", 
+# "Expanded_EOD_3_CP55_1973_1982", "Expanded_EOD_4_CP56_1973_1982", 
+# "Expanded_EOD_5_CP57_1973_1982", "Expanded_EOD_6_CP58_1973_1982", 
+# "Expanded_EOD_7_CP59_1973_1982", "Expanded_EOD_8_CP60_1973_1982",
+# "Expanded_EOD_9_CP61_1973_1982", "Expanded_EOD_10_CP62_1973_1982",
+# "Expanded_EOD_11_CP63_1973_1982", "Expanded_EOD_12_CP64_1973_1982",
+# "Expanded_EOD_13_CP65_1973_1982", "V2Digit_NS_EOD_part_1_1973_1982",
+# "V2Digit_NS_EOD_part_2_1973_1982", "V2Digit_SS_EOD_part_1_1973_1982",
+# "V2Digit_SS_EOD_part_2_1973_1982", "EOD_4_size_1983_1987", "EOD_4_extent_1983_1987",
+# "EOD_4_nodes_1983_1987", "Coding_system_EOD_1973_2003", "Tumor_marker_1_1990_2003",
+# "Tumor_marker_2_1990_2003", "Tumor_marker_3_1998_2003", "CS_tumor_size_2004_2015",
+# "CS_extension_2004_2015", "CS_lymph_nodes_2004_2015", "CS_mets_at_dx_2004_2015",
+# "CSsitespecificfactor12004varyin", "CSsitespecificfactor22004varyin",
+# "CSsitespecificfactor32004varyin", "CSsitespecificfactor42004varyin",
+# "CSsitespecificfactor52004varyin", "CSsitespecificfactor62004varyin",
+# "CSsitespecificfactor72004varyin", "CSsitespecificfactor82004varyin",
+# "CSsitespecificfactor92004varyin", "CSsitespecificfactor102004varyi",
+# "CSsitespecificfactor112004varyi", "CSsitespecificfactor122004varyi",
+# "CSsitespecificfactor132004varyi", "CSsitespecificfactor152004varyi",
+# "CSsitespecificfactor162004varyi", "CSsitespecificfactor252004varyi",
+# "Derived_AJCC_T_6th_ed_2004_2015", "Derived_AJCC_N_6th_ed_2004_2015",
+# "Derived_AJCC_M_6th_ed_2004_2015", "DerivedAJCCStageGroup6thed20042",
+# "SEERCombinedSummaryStage2000200", "CSversioninputoriginal2004_2015",
+# "CS_version_derived_2004_2015", "CSversioninputcurrent_2004_2015",
+# "RX_Summ_Surg_Prim_Site_1998", "RX_Summ_Scope_Reg_LN_Sur_2003",
+# "RX_Summ_Surg_Oth_Reg_Dis_2003", "RXSummReg_LN_Examined_1998_2002",
+# "RX_Summ_Systemic_Surg_Seq", "RX_Summ_Surg_Rad_Seq", "Reasonnocancer_directed_surgery",
+# "Radiation_recode", "Chemotherapy_recode_yes_no_unk", "Sitespecificsurgery19731997vary",
+# "Scopeofreglymphndsurg_1998_2002", "Surgeryofothregdissites19982002",
+# "Record_number_recode", "Age_recode_with_1_year_olds", "Site_recode_ICD_O_3_WHO_2008",
+# "ICCCsiterecode_ICD_O_3_WHO_2008", "ICCCsiterecextendedICDO3WHO2008",
+# "Behavior_recode_for_analysis", "Histologyrecode_broad_groupings",
+# "Histologyrecode_Brain_groupings", "TNM_7_CS_v0204_Schema", "Race_recode_White_Black_Other",
+# "Race_recode_W_B_AI_API", "OriginrecodeNHIAHispanicNonHisp",
+# "SEER_historic_stage_A_1973_2015", "AJCCstage_3rd_edition_1988_2003",
+# "SEERmodifiedAJCCstage3rd1988200", "Firstmalignantprimary_indicator",
+# "state", "county", "PRCDA_2017", "PRCDA_Region", "COD_to_site_recode",
+# "COD_to_site_rec_KM", "Vitalstatusrecodestudycutoffuse", "IHS_Link",
+# "Summary_stage_2000_1998", "AYA_site_recode_WHO_2008", "Lymphomasubtype_recode_WHO_2008",
+# "SEERcausespecificdeathclassific", "SEERothercauseofdeathclassifica",
+# "CSTumor_Size_Ext_Eval_2004_2015", "CS_Reg_Node_Eval_2004_2015",
+# "CS_Mets_Eval_2004_2015", "Primary_by_international_rules", "ERStatusRecodeBreastCancer_1990",
+# "PRStatusRecodeBreastCancer_1990", "CS_Schema_AJCC_6th_Edition",
+# "LymphvascularInvasion2004varyin", "Derived_AJCC_T_7th_ed_2010",
+# "Derived_AJCC_N_7th_ed_2010", "Derived_AJCC_M_7th_ed_2010", "DerivedAJCCStageGroup7thed_2010",
+# "BreastAdjustedAJCC6thT1988_2015", "BreastAdjustedAJCC6thN1988_2015",
+# "BreastAdjustedAJCC6thM1988_2015", "BreastAdjustedAJCC6thStage19882",
+# "Derived_HER2_Recode_2010", "Breast_Subtype_2010", "LymphomaAnnArborStage_1983_2015",
+# "SEERCombinedMetsat_DX_bone_2010", "SEERCombinedMetsatDX_brain_2010",
+# "SEERCombinedMetsatDX_liver_2010", "SEERCombinedMetsat_DX_lung_2010",
+# "TvaluebasedonAJCC_3rd_1988_2003", "NvaluebasedonAJCC_3rd_1988_2003",
+# "MvaluebasedonAJCC_3rd_1988_2003", "RadiationtoBrainorCNSRecode1988",
+# "Census_Tract_1990", "Census_Tract_2000", "Census_Tract_2010",
+# "Census_Coding_System", "Census_Tract_Certainty_1990", "Census_Tract_Certainty_2000",
+# "Census_Tract_Certainty_2010", "Census_Tract_Poverty_Indicator",
+# "Rural_Urban_Continuum_Code_1993", "Rural_Urban_Continuum_Code_2003",
+# "Rural_Urban_Continuum_Code_2013", "Health_Service_Area", "HealthService_Area_NCI_Modified",
+# "Derived_SS1977_flag", "Derived_SS2000_flag", "Firstcourseofreconstruct1998200",
+# "Radiation", "RadiationtoBrainorCNS_1988_1997", "SEER_DateofDeath_Month",
+# "SEER_DateofDeath_Year", "Month_of_last_follow_up_recode", "Year_of_last_follow_up_recode",
+# "Year_of_birth", "Date_of_diagnosis_flag", "Date_therapy_started_flag",
+# "Date_of_birth_flag", "Date_of_last_follow_up_flag", "Month_therapy_started",
+# "Year_therapy_started", "Other_cancer_directed_therapy", "Derived_AJCC_flag",
+# "Derived_SS1977", "Derived_SS2000", "SEER_Summary_stage_1977_9500",
+# "SEER_Summary_stage_2000_0103", "NAPIIA_Derived_API_Race", "Primary_Payer_at_DX",
+# "COD_ICD_code", "Cause_of_Death_ICD_8_or_9", "Cause_of_Death_ICD_10",
+# "Recode_ICD_0_2_to_9", "Recode_ICD_0_2_to_10", "NHIA_Derived_Hisp_Origin",
+# "Age_site_edit_override", "Sequencenumber_dx_conf_override",
+# "Site_type_lat_seq_override", "Surgerydiagnostic_conf_override",
+# "Site_type_edit_override", "Histology_edit_override", "Report_source_sequence_override",
+# "Seq_ill_defined_site_override", "LeukLymphdxconfirmationoverride",
+# "Site_behavior_override", "Site_EOD_dx_date_override", "Site_laterality_EOD_override",
+# "Site_laterality_morph_override", "Insurance_Recode_2007", "Yost_ACS_2006_2010",
+# "Yost_ACS_2010_2014", "Yost_ACS_2013_2017", "Yost_ACS_2006_2010_State_based",
+# "Yost_ACS_2010_2014_State_based", "Yost_ACS_2013_2017_State_based",
+# "Yost_ACS_2006_2010_quintile", "Yost_ACS_2010_2014_quintile",
+# "Yost_ACS_2013_2017_quintile", "YostACS20062010quintileStatebas",
+# "YostACS20102014quintileStatebas", "YostACS20132017quintileStatebas",
+# "HPV_recode_2010", "In_Medicaid_Flag", "OncotypeDXBreastRecurrenceScore",
+# "OncotypeDXRSgroupRS18RS1830RS30", "OncotypeDXreasonno_score_linked",
+# "Oncotype_DX_year_of_test_report", "OncotypeDX_month_of_test_report",
+# "OncotypeDXmonthssince_diagnosis")
+
+# hit control shift c while highlighting above to uncomment/comment section
+```
+
+# Create dataframes for Medicaid enrollment and SEER for export that are limited to those diagnosed at 0 to 39 years
+# Exclude those over 39 years old and export data to make the datasets more manageeable on import
+```{r}
+# exclude those 40 and over from seer first
+# seer_0to39<-seer %>%
+#   filter(Agerecodewithsingleages_and_100<40)
+
+# get ids from seer file to limit enrollment file
+
+# ids<-seer_0to39$patient_id
+
+# enroll_seerids<-enroll %>% # limit Medicaid enrollment file to SEER ids
+ # filter(patient_id %in% ids)
+
+```
+
+# Export these data as csv files for quicker import
+```{r}
+# write.csv(seer_0to39,"seer0to39.csv", row.names = FALSE)
+ 
+# write.csv(enroll_seerids,"enroll_seerids.csv", row.names = FALSE)
+```
+
+# Import files created with text commented out above for analysis
+```{r}
+seer0to39<-read_csv("/Volumes/kijohnson/Active/seer0to39.csv", show_col_types = FALSE) # this is 0 to 39 cancer patient data
+enroll_seerids<-read_csv("/Volumes/kijohnson/Active/enroll_seerids.csv", show_col_types = FALSE) # this is 0 to 39 enrollee data
+mcseer <- read_csv("/Volumes/kijohnson/Active/mcseer_dsb/mcseer_dsb.csv", show_col_types = FALSE) # Derek's file that contains continuity of enrollment variables
+```
+
+# Identify ids to exclude where patient has files in multiple states (this is usedd below)
+```{r}
+df<-enroll_seerids %>% 
+   find_duplicates(patient_id, YEAR)
+ 
+x <- unique(df$patient_id) # 841 vector of unique ids to exclude in exclusion section
+```
+
+# Reduce canceer dataset to variables needed for analysis
+```{r}
+# select variables
+seer0to39<-seer0to39 %>%
+  select("patient_id", "SEER_registry", "Race_ethnicity", "sex", "Agerecodewithsingleages_and_100",
+"Sequence_number", "Month_of_diagnosis", "Year_of_diagnosis",
+"Month_of_diagnosis_recode", "Primary_Site", "Laterality", "Histology_ICD_O_2",
+"Behavior_code_ICD_O_2", "Histologic_Type_ICD_O_3", "Behavior_code_ICD_O_3",
+"Grade", "Diagnostic_Confirmation", "Type_of_Reporting_Source", "Derived_AJCC_T_6th_ed_2004_2015", "Derived_AJCC_N_6th_ed_2004_2015","Derived_AJCC_M_6th_ed_2004_2015", "DerivedAJCCStageGroup6thed20042",
+"SEERCombinedSummaryStage2000200", "Age_recode_with_1_year_olds", "Site_recode_ICD_O_3_WHO_2008",
+"ICCCsiterecode_ICD_O_3_WHO_2008", "ICCCsiterecextendedICDO3WHO2008",
+"Behavior_recode_for_analysis", "Histologyrecode_broad_groupings", "Race_recode_White_Black_Other",
+"Race_recode_W_B_AI_API", "OriginrecodeNHIAHispanicNonHisp",
+"SEER_historic_stage_A_1973_2015", "AJCCstage_3rd_edition_1988_2003",
+"SEERmodifiedAJCCstage3rd1988200", "Firstmalignantprimary_indicator",
+"state", "county", "PRCDA_2017", "PRCDA_Region", "COD_to_site_recode",
+"COD_to_site_rec_KM", "Vitalstatusrecodestudycutoffuse", "IHS_Link",
+"Summary_stage_2000_1998", "SEERCombinedSummaryStage2000200", "AYA_site_recode_WHO_2008", 
+"SEERcausespecificdeathclassific", "SEERothercauseofdeathclassifica",
+"Derived_AJCC_T_7th_ed_2010", "Derived_AJCC_N_7th_ed_2010", "Derived_AJCC_M_7th_ed_2010", "DerivedAJCCStageGroup7thed_2010", "Census_Tract_1990", "Census_Tract_2000", "Census_Tract_2010",
+"Census_Coding_System", "Census_Tract_Certainty_1990", "Census_Tract_Certainty_2000",
+"Census_Tract_Certainty_2010", "Census_Tract_Poverty_Indicator",
+"Rural_Urban_Continuum_Code_1993", "Rural_Urban_Continuum_Code_2003",
+"Rural_Urban_Continuum_Code_2013", "Health_Service_Area", "HealthService_Area_NCI_Modified",
+"SEER_DateofDeath_Month", "SEER_DateofDeath_Year", "Month_of_last_follow_up_recode", "Year_of_last_follow_up_recode", "Year_of_birth", "Date_of_diagnosis_flag", "Date_therapy_started_flag",
+"Date_of_birth_flag", "Date_of_last_follow_up_flag", "Month_therapy_started",
+"Year_therapy_started",  "Derived_AJCC_flag","SEER_Summary_stage_1977_9500",
+"SEER_Summary_stage_2000_0103", "NAPIIA_Derived_API_Race", "Primary_Payer_at_DX",
+"COD_ICD_code", "Cause_of_Death_ICD_8_or_9", "Cause_of_Death_ICD_10",
+"Recode_ICD_0_2_to_9", "Recode_ICD_0_2_to_10", "NHIA_Derived_Hisp_Origin",
+"Insurance_Recode_2007", "Yost_ACS_2006_2010", "Yost_ACS_2010_2014", "Yost_ACS_2013_2017", "Yost_ACS_2006_2010_State_based", "Yost_ACS_2010_2014_State_based", "Yost_ACS_2013_2017_State_based",
+"Yost_ACS_2006_2010_quintile", "Yost_ACS_2010_2014_quintile",
+"Yost_ACS_2013_2017_quintile", "YostACS20062010quintileStatebas",
+"YostACS20102014quintileStatebas", "YostACS20132017quintileStatebas",
+"HPV_recode_2010", "In_Medicaid_Flag")
+```
+
+# Data management of variables 
+```{r}
+# convert primary payer variable to numeric
+seer0to39$Primary_Payer_at_DX<-as.numeric(seer0to39$Primary_Payer_at_DX)
+
+# recode to group some categories
+seer0to39<-seer0to39%>%
+  mutate(insurance =       if_else(In_Medicaid_Flag==0 & Primary_Payer_at_DX %in% c(20,21), 0, # private insurance
+                           if_else(In_Medicaid_Flag==1, 1, # ever had Medicaid between 2006 to 2013
+                           if_else(In_Medicaid_Flag==0 & Primary_Payer_at_DX %in% c(1,2), 2, # uninsured
+                           if_else(In_Medicaid_Flag==0 & Primary_Payer_at_DX %in% c(31,35), 3, # did not link to Medicaid but coded as Medicaid
+                           if_else(In_Medicaid_Flag==0 & Primary_Payer_at_DX %in% c(60,61,62,63,64), 4, # Medicare
+                           if_else(In_Medicaid_Flag==0 & Primary_Payer_at_DX %in% c(65,66, 67), 5, # Military
+                           if_else(In_Medicaid_Flag==0 & Primary_Payer_at_DX == 68, 6, # Indian/Public Health service
+                           if_else(In_Medicaid_Flag==0 & Primary_Payer_at_DX == 99, 7, # unknown
+                           if_else(In_Medicaid_Flag==0 & Primary_Payer_at_DX == 10, 8, NULL))))))))))  # insurance NOS
+
+# make it a factor variable
+seer0to39$insurance<-factor(seer0to39$insurance, levels=c(0:8), labels=c("Private Insurance", "Ever linked to Medicaid", "Uninsured", "Did not link to Medicaid but coded as Medicaid", "Medicare", "Military", "Indian/Public Health Service", "Unknown", "insurance NOS"))
+
+table(seer0to39$insurance, seer0to39$Primary_Payer_at_DX, useNA="always")
+
+# Classification in SEER file
+seer0to39<-seer0to39%>%
+  mutate(insurance2=if_else(Primary_Payer_at_DX %in% c(20,21), 0, # private insurance
+                           if_else(Primary_Payer_at_DX %in% c(1,2), 1, # uninsured
+                           if_else(Primary_Payer_at_DX %in% c(31,35), 2, #  Medicaid
+                           if_else(Primary_Payer_at_DX %in% c(60,61,62,63,64), 3, # Medicare
+                           if_else(Primary_Payer_at_DX %in% c(65,66, 67), 4, # Military
+                           if_else(Primary_Payer_at_DX == 68, 5, # Indian/Public Health service
+                           if_else(Primary_Payer_at_DX == 99, 6, # unknown
+                           if_else(Primary_Payer_at_DX == 10, 7, NULL)))))))))  # insurance NOS
+
+seer0to39$insurance2<-factor(seer0to39$insurance2, levels=c(0:7), labels=c("Private Insurance", "Uninsured", "Medicaid", "Medicare", "Military", "Indian/Public Health Service", "Unknown", "insurance NOS"))
+
+table(seer0to39$Primary_Payer_at_DX,seer0to39$insurance, useNA="always")
+
+# look at insurance at dx by Medicaid flag
+table(seer0to39$Primary_Payer_at_DX, seer0to39$In_Medicaid_Flag)
+table(seer0to39$Insurance_Recode_2007, seer0to39$In_Medicaid_Flag)
+table(seer0to39$Primary_Payer_at_DX, seer0to39$In_Medicaid_Flag)
+table(seer0to39$Primary_Payer_at_DX, seer0to39$Insurance_Recode_2007)
+
+# recode demographic variables
+# Age, race, hspanic, odeath, cause specfic death
+seer0to39<-seer0to39 %>%
+  mutate(age_cat=case_when(Age_recode_with_1_year_olds %in% c(0,1) ~ 0, # 0 to 4
+                                Age_recode_with_1_year_olds == 2 ~1, # 5 to 9
+                                Age_recode_with_1_year_olds == 3 ~2, # 10 to 14
+                                Age_recode_with_1_year_olds == 4 ~3, # 15 to 19
+                                Age_recode_with_1_year_olds %in% c(5,6,7,8) ~ 4))%>% # 20 to 39
+         
+         mutate(race_cat=case_when(Race_recode_W_B_AI_API == 1 ~0, # White
+                                Race_recode_W_B_AI_API == 2 ~1, # Black
+                                Race_recode_W_B_AI_API == 3 ~2, # AIAN
+                                Race_recode_W_B_AI_API == 4 ~3, # API
+                                Race_recode_W_B_AI_API == 9 ~4)) %>% # Unknown
+  
+        mutate(hispanic = case_when(OriginrecodeNHIAHispanicNonHisp == 0 ~0, # Non-Hispanic
+                                    OriginrecodeNHIAHispanicNonHisp == 1 ~1)) %>% # Hispanic
+  
+        mutate(race_ethnicity = case_when(race_cat == 0 & hispanic == 0 ~ 0, # Non-Hispanic White
+                                race_cat == 1 & hispanic == 0 ~ 1, # Non-Hispanic Black
+                                race_cat == 2 & hispanic == 0 ~ 2, # Non-Hispanic AIAN
+                                race_cat == 3 & hispanic == 0 ~ 3, # Non-Hispanic API
+                                race_cat == 4 & hispanic == 0 ~ 4, # Non-Hispanic Unknown
+                                race_cat %in% c(0:4) & hispanic==1 ~5)) %>% # Hispanic
+  
+        mutate(sex = case_when(sex == 1 ~ 0, # "Male"
+                                sex == 2 ~ 1, # "Female"
+                                sex == 9 ~ 2)) %>% # "Other"
+  
+        mutate(any_dead = case_when(Vitalstatusrecodestudycutoffuse == 0 ~ 1, # Dead
+                                Vitalstatusrecodestudycutoffuse == 1 ~0)) %>% # Alive
+  
+        mutate(can_dead = case_when(SEERcausespecificdeathclassific == 0 ~0, # Alive or dead of other cause
+                                SEERcausespecificdeathclassific == 1 ~1)) # Dead
+# not 8 an 9 are missing or N/A
+
+# Factor variables
+seer0to39$age_cat<-factor(seer0to39$age_cat, levels=c(0:4), labels=c("0-4", "5-9", "10-14", "15-19", "20-39"))
+seer0to39$race_cat<-factor(seer0to39$race_cat, levels=c(0:4), labels=c("White", "Black", "AIAN", "API", "Unknown"))
+seer0to39$hispanic<-factor(seer0to39$hispanic, levels=c(0:1), labels=c("Non-Hispanic", "Hispanic"))
+seer0to39$race_ethnicity<-factor(seer0to39$race_ethnicity, levels=c(0:5), labels=c("Non-Hispanic White", "Non-Hispanic Black", "Non-Hispanic AIAN", "Non-Hispanic API", "Non-Hispanic Unknown", "Hispanic")) 
+seer0to39$any_dead<-factor(seer0to39$any_dead, levels=c(0:1), labels=c("Alive", "Dead"))
+seer0to39$sex <- factor(seer0to39$sex, levels = c(0:2), labels = c("Male", "Female", "Not Stated"))
+
+table(seer0to39$age_cat)
+table(seer0to39$race_cat)
+table(seer0to39$hispanic)
+table(seer0to39$race_ethnicity)
+table(seer0to39$any_dead)
+table(seer0to39$can_dead)
+table(seer0to39$sex)
+
+# calculate survival time from month of dx, recode year of dx TO Month_of_last_follow_up_recode, Year_of_last_follow_up_recode. The difference between these variable dates would provide months of follow-up
+
+# SEERothercauseofdeathclassifica
+summary(seer0to39$Month_of_diagnosis_recode)
+summary(seer0to39$Year_of_diagnosis)
+summary(as.numeric(seer0to39$Month_of_last_follow_up_recode))
+seer0to39$Month_of_last_follow_up_recode<-as.numeric(seer0to39$Month_of_last_follow_up_recode) # make variable numeric
+summary(seer0to39$Month_of_last_follow_up_recode)
+summary(seer0to39$Year_of_last_follow_up_recode)
+
+# assign a date of diagnosis using 15 as the day because there is no day of dx so assume mean is 15
+seer0to39$proxy_day_of_dx <-15
+seer0to39$proxy_day_of_fu <-15
+
+seer0to39<-seer0to39 %>%
+  mutate(proxy_dx_date = make_date(Year_of_diagnosis, Month_of_diagnosis_recode, proxy_day_of_dx)) %>% # make date of dx
+  mutate(proxy_fu_date = make_date(Year_of_last_follow_up_recode, Month_of_last_follow_up_recode, proxy_day_of_fu)) # make date of follow-up
+
+# calculate the difference in days between the estimated date of dx and estimated date of last follow-up
+seer0to39$survday<-as.numeric(difftime(seer0to39$proxy_fu_date, seer0to39$proxy_dx_date, units=c("days")))
+summary(seer0to39$survday)
+
+# estimate survival months by dividing by the average number of days in a month
+seer0to39$survmo<-seer0to39$survday/30.437
+
+summary(seer0to39$survmo)
+
+# cancer type coding
+table(seer0to39$ICCCsiterecode_ICD_O_3_WHO_2008)
+
+class(seer0to39$ICCCsiterecode_ICD_O_3_WHO_2008)
+
+# ICCC3
+seer0to39<-seer0to39 %>%
+  mutate(can_type = case_when(
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(11, 12,13,14,15)~0,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(21,22,23,24,25)~1,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(31,32,33,34,35,36)~2,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(41,42) ~3,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(50) ~4,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(62,62,63) ~5,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(71,72,75) ~6,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(81,82, 83,84,85) ~7,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(91,92,93,94,95)~8,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(101,102,103, 104,105) ~9,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(111,112,113,114,115,116) ~10,
+    ICCCsiterecode_ICD_O_3_WHO_2008 %in% c(121)~11))
+
+seer0to39$can_type<-factor(seer0to39$can_type, levels=c(0:11), labels=c(
+  "I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases",
+  "II. Lymphomas and reticuloendothelial neoplasms",
+  "III. CNS and miscellaneous intracranial and intraspinal neoplasms",
+  "IV. Neuroblastoma and other peripheral nervous cell tumors",
+  "V. Retinoblastoma",
+  "VI. Renal tumors",
+  "VII. Hepatic tumors",
+  "VIII. Malignant bone tumors",
+  "IX. Soft tissue and other extraosseous sarcomas",
+  "X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads",
+  "XI. Other malignant epithelial neoplasms and malignant melanomas",
+  "XII. Other and unspecified malignant neoplasms"))
+    
+table(seer0to39$can_type)  
+
+table(seer0to39$AYA_site_recode_WHO_2008)
+
+# create categories for AYA codes
+class(seer0to39$AYA_site_recode_WHO_2008) # numeric
+
+seer0to39 <- seer0to39 %>%
+  mutate(can_typeAYA = case_when(AYA_site_recode_WHO_2008 %in% c(1,2,3,4) ~ 0,
+                                 AYA_site_recode_WHO_2008 %in% c(5,6) ~ 1,
+                                 AYA_site_recode_WHO_2008 %in% c(7,8,9,10,11,12,13,14,15,16) ~ 2,
+                                 AYA_site_recode_WHO_2008 %in% c(17,18,19,20) ~ 3,
+                                 AYA_site_recode_WHO_2008 %in% c(21,22,23,24,25) ~ 4,
+                                 AYA_site_recode_WHO_2008 %in% c(26,27,28) ~ 5,
+                                 AYA_site_recode_WHO_2008 %in% c(29,30) ~ 6,
+                                 AYA_site_recode_WHO_2008 %in% c(31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48) ~ 7,
+                                 AYA_site_recode_WHO_2008 %in% c(49,50,51,52,53,54,55) ~ 8,
+                                 AYA_site_recode_WHO_2008 %in% c(55,56) ~ 9,
+                                 AYA_site_recode_WHO_2008 == 99 ~ 10))
+                                 
+seer0to39$can_typeAYA <- factor(seer0to39$can_typeAYA, levels = c(0:10), labels = c(
+  "1. Leukemias",
+  "2. Lymphomas",
+  "3. CNS and Other Intracranial and Intraspinal Neoplasms (all behaviors)",
+  "4. Osseous & Chondromatous Neoplasms",
+  "5. Soft Tissue Sarcomas",
+  "6. Germ Cell and Trophoblastic Neoplasms",
+  "7. Melanoma and Skin Carcinomas",
+  "8. Carcinomas",
+  "9. Miscellaneous specified neoplasms, NOS",
+  "10. Unspecified Malignant Neoplasms",
+  "Unclassified"))
+table(seer0to39$can_typeAYA, useNA = "always")
+```
+
+# Exclusions
+```{r}
+# limit to first cancers
+seer0to39 <- seer0to39 %>%
+  filter(Firstmalignantprimary_indicator == 1) #194623 to 172867
+```
+
+
+# exclude multiple state Medicaid ids within a single year defined above
+```{r}
+seer0to39 <- seer0to39 %>% 
+  filter(!patient_id %in% x)
+```
+
+# Exclude those with missing data on variables used in the analysis
+```{r}
+seer0to39<-seer0to39 %>%
+  filter(!is.na(survmo), !is.na(can_dead), !is.na(In_Medicaid_Flag), !is.na(race_ethnicity), !is.na(age_cat), !is.na(Census_Tract_Poverty_Indicator))
+```
+
+# Exclude those with match scores below
+```{r}
+match <- enroll_seerids %>%
+  filter(MATCH_SCORE_HI <5)
+
+# create list of unique ids to exclude
+ids_2_exclude <- unique(match$patient_id)
+
+seer0to39 <- seer0to39 %>%
+  filter(!patient_id %in% ids_2_exclude)
+```
+
+# Merge in Derek's variables for number of months pre and post indicator within 3, 9, and 12 month windows
+```{r}
+# select variables needed from mcseer
+mcseer2 <- mcseer %>%
+  select(patient_id, status, status3, pre_mo3, post_mo3, status6, pre_mo6, post_mo6, status12, pre_mo12, post_mo12, dxdate, dx_mo_num)
+
+seer0to39<-left_join(seer0to39, mcseer2, by = c("patient_id"))
+```
+
+# Create variable for Medicaid continuity with NAs pre or post its own category
+```{r}
+seer0to39 <- seer0to39 %>%
+  mutate(mcont2 = case_when(In_Medicaid_Flag == 0 ~ 0, # Not Linked
+                            pre_mo3 >=1 & post_mo3 >= 1 ~ 1, # Linked continuous
+                            pre_mo3 > 0 & post_mo3 == 0 ~ 2, # Linked discontinuous Medicaid enrollment 3 mo before or after dx
+                            pre_mo3 == 0 & post_mo3 > 0 ~ 3, # Linked discontinuous Medicaid enrollment 3 mo before or after dx
+                            pre_mo3 == 0 & post_mo3 == 0 ~ 4, # Linked Not enrolled in Medicaid 3 mo before or after dx
+                            is.na(pre_mo3) | is.na(post_mo3)~  5)) # Linked Missing data in 3 mo before and/or after dx
+                                        
+test3 <- seer0to39 %>%
+  group_by(In_Medicaid_Flag, insurance, status3, pre_mo3, post_mo3) %>%
+  count(mcont2)
+
+seer0to39$mcont2 <- factor(seer0to39$mcont2, levels = c(0:5), labels = c("Not linked", 
+                                                                         "Linked continuous", 
+                                                                         "Linked discontinuous enrolled before", 
+                                                                         "Linked discontinuous enrolled after",
+                                                                         "Linked not enrolled within 3 mo before or 3 mo after dx",
+                                                                         "Linked missing data in 3 mo before or after dx"))
+
+table(seer0to39$mcont2, useNA = "always")
+table(pre_mo3 =mcseer2$pre_mo3, post_mo3 = mcseer2$post_mo3, useNA = "always")
+
+# Combine categories 2-4 to be discontinuos
+seer0to39 <- seer0to39 %>%
+  mutate(mcont3 = case_when(mcont2 == "Not linked" ~ 0,
+                            mcont2 == "Linked continuous"  ~ 1,
+                            mcont2 %in% c("Linked discontinuous enrolled before", "Linked not enrolled within 3 mo before or 3 mo after dx", "Linked not enrolled within 3 mo before or 3 mo after dx", "Linked discontinuous enrolled after") ~2,
+                            mcont2 == "Linked missing data in 3 mo before or after dx" ~ 3))
+
+
+seer0to39$mcont3 <- factor(seer0to39$mcont3, levels = c(0:3), labels = c("Not linked", 
+                                                                         "Linked continuous", 
+                                                                         "Linked discontinuous ", 
+                                                                        "Linked missing data in 3 mo before or after dx"))
+table(seer0to39$mcont3, useNA="always")
+
+test <- seer0to39 %>%
+  select(patient_id, In_Medicaid_Flag, mcont3, mcont2, pre_mo3, post_mo3) %>%
+  filter(In_Medicaid_Flag == "Linked to Medicaid")
+```
+
+# make separate dataframes for 0 to 19 
+```{r}
+seer0to19 <- seer0to39 %>%
+  filter(age_cat %in% c("0-4", "5-9", "10-14", "15-19"))
+```
+
+# Table 1
+```{r}
+# 0 to 19
+label(seer0to19$age_cat)<-"Age category"
+label(seer0to19$sex)<-"Sex"
+label(seer0to19$insurance2)<-"Insurance at diagnosis or first treatment"
+label(seer0to19$race_ethnicity)<-"Race/ethnicity category"
+label(seer0to19$survmo)<-"Survival months"
+label(seer0to19$can_type)<-"Cancer type"
+
+# make dead a factor variable just for this table
+seer0to19$can_dead2<-factor(seer0to19$can_dead, levels=c(0,1), labels= c("Alive", "Deceased"))
+table(seer0to19$can_dead2)
+label(seer0to19$can_dead2) <- "Vital Status"
+seer0to19$In_Medicaid_Flag<-factor(seer0to19$In_Medicaid_Flag, levels=c(0,1), labels= c("Not linked to Medicaid", "Linked to Medicaid"))
+table(seer0to19$can_dead2)
+table(seer0to19$In_Medicaid_Flag)
+
+table1(~age_cat + sex + insurance2 + race_ethnicity + can_dead2 + survmo + can_type|In_Medicaid_Flag, droplevels = TRUE, seer0to19)
+```
+
+
+# Survival plots (# In_Medicaid_flag)
+```{r}
+# In_Medicaid_flag
+table(seer0to19$insurance)
+
+survp <- function(age_group){
+  x <<- seer0to39 %>%
+    filter(age_cat %in% age_group)
+survival<- ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data =x), 
+    xlab = "Months from diagnosis", 
+    ylab = "Cancer survival proportion",
+    legend.title = "",
+    legend = "bottom",
+    font.legend=c(24, "bold"),
+    legend.labs = c("Medicaid not linked", "Medicaid linked"),
+    palette=c("black", "blue", "gray", "red"),
+    font.x = c(24, "bold"),
+    font.y = c(24, "bold"),
+    xlim=c(0, 60),
+    ylim=c(0.5, 1),
+    censor.size=0.5,
+    font.tickslab = c(24, "bold"),
+    pval=TRUE,
+    pval.size = 12,
+    pval.coord = c(2,0.55)
+    )
+}
+
+p <- survp(c("0-4", "5-9", "10-14", "15-19"))
+p
+p$plot + scale_x_continuous(breaks = c(0,12,24,36,48,60))
+
+ggsave(filename = "KMcurveplot0to19.png",
+       width = 14, height = 8.5, units = "in", bg="white") 
+
+# estimate survival time 0 to 19
+st0to19<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19), times = 60)
+st0to19
+```
+
+# Survival plots by age category (Medicaid linked)
+```{r}
+survp_age <- function(age_group, figtitle){
+  x <<- seer0to39 %>%
+    filter(age_cat %in% age_group)
+survival<- ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data =x), 
+    xlab = "Months from diagnosis", 
+    ylab = "Cancer survival proportion",
+    title=figtitle,
+    legend.title = "",
+    legend = "bottom",
+    font.legend=c(12, "bold"),
+    legend.labs = c("Medicaid not linked", "Medicaid linked"),
+    palette=c("black", "blue", "gray", "red"),
+    font.x = c(12, "bold"),
+    font.y = c(12, "bold"),
+    xlim=c(0, 60),
+    ylim=c(0.5, 1),
+    censor.size=0.5,
+    font.tickslab = c(12, "bold"),
+    pval=TRUE,
+    pval.size = 4,
+    pval.coord = c(2,0.55),
+    break.x.by = 12
+    )
+}
+p0to4 <- survp_age("0-4","0-4 years")
+
+p5to9 <- survp_age("5-9", "5-9 years")
+
+p10to14 <- survp_age("10-14", "10-14 years")
+
+p15to19 <- survp_age("15-19", "15-19 years")
+
+
+pdf("KMcurveplot_agecat.pdf", width=11, height=10, paper="USr")
+p0to4$plot + p5to9$plot + p10to14$plot + p15to19$plot + plot_layout(ncol=2, nrow=2, guides='collect') &
+  theme(legend.position='bottom')
+dev.off()
+
+st0to4<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "0-4")), times = 60)
+st0to4
+surv_table_0to4 <- as.data.frame(st0to4$surv)
+st5to9<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "5-9")), times = 60)
+st5to9
+
+st10to14<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "10-14")), times = 60)
+st10to14
+
+st15to19<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "15-19")), times = 60)
+st15to19
+
+
+library(gtsummary)
+table3 <- list(
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "0-4")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "5-9")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "10-14")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "15-19"))
+) %>%
+  tbl_survfit(times = 60)
+
+ST_MF_0to19 <- data.frame(table3$table_body)
+
+# Creating a table with the survival probilities and 95% CIs
+table1<-data.frame(matrix(ncol=4, nrow=0)) #create the table
+columns<-c("Medicaid Flag", "Survival Percentage",  "LowerCI", "UpperCI") #label the columns with names
+colnames(table1)<-columns
+#Plug in the data below
+table1[1:2,]<-c(st0to4$strata, st0to4$surv, st0to4$lower , st0to4$upper)
+table1[3:4,]<-c(st5to9$strata, st5to9$surv, st5to9$lower , st5to9$upper)
+table1[5:6,]<-c(st10to14$strata, st10to14$surv, st10to14$lower , st10to14$upper)
+table1[7:8,]<-c(st15to19$strata, st15to19$surv, st15to19$lower , st15to19$upper)
+# creating table 2 for age columns
+table2<-data.frame(matrix(ncol=2,nrow=0))
+columns2<-c("Age Category","Medicaid Flag description")
+colnames(table2)<-columns2
+table2[1,] <- c("0-4","Medicaid not link")
+table2[2,] <- c("0-4","Medicaid linked")
+table2[3,] <- c("5-9","Medicaid not link")
+table2[4,] <- c("5-9","Medicaid linked")
+table2[5,] <- c("10-14","Medicaid not link")
+table2[6,] <- c("10-14","Medicaid linked")
+table2[7,] <- c("15-19","Medicaid not link")
+table2[8,] <- c("15-19","Medicaid linked")
+
+MF_age_0to19 <- cbind(table2, table1)
+```
+
+# Survival plots by race (Medicaid linked)
+```{r}
+survp_race <- function(race_f){
+  x <<- seer0to19 %>%
+    filter(race_ethnicity %in% race_f)
+survival<- ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data =x), 
+    xlab = "Months from diagnosis", 
+    ylab = "Cancer survival proportion",
+    title=race_f,
+    legend.title = "",
+    legend = "bottom",
+    font.legend=c(12, "bold"),
+    legend.labs = c("Medicaid not linked", "Medicaid linked"),
+    palette=c("black", "blue", "gray", "red"),
+    font.x = c(12, "bold"),
+    font.y = c(12, "bold"),
+    xlim=c(0, 60),
+    ylim=c(0.5, 1),
+    censor.size=0.5,
+    font.tickslab = c(12, "bold"),
+    pval=TRUE,
+    pval.size = 4,
+    pval.coord = c(2,0.55),
+    break.x.by = 12
+    )
+}
+pW <- survp_race("Non-Hispanic White")
+
+pB <- survp_race("Non-Hispanic Black")
+
+pAIAN <- survp_race("Non-Hispanic AIAN")
+
+pAPI <- survp_race("Non-Hispanic API")
+
+pH <- survp_race("Hispanic")
+
+pUn <- survp_race("Non-Hispanic Unknown")
+
+pdf("KMcurveplot_race.pdf", width=11, height=10, paper="USr")
+pW$plot + pB$plot + pAIAN$plot + pAPI$plot + pH$plot + pUn$plot + plot_layout(ncol=3, nrow=2, guides='collect') &
+  theme(legend.position='bottom')
+dev.off()
+
+stNHW<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity== "Non-Hispanic White")), times = 60)
+stNHW
+
+stNHB<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity=="Non-Hispanic Black")), times = 60)
+stNHB
+
+stAIAN<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Non-Hispanic AIAN")), times = 60)
+stAIAN
+
+stAPI<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Non-Hispanic API")), times = 60)
+stAPI
+
+
+stHIS<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Hispanic")), times = 60)
+stHIS
+
+# too few events
+stNHU<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Non-Hispanic Unknown")), times = 60)
+stNHU
+
+table4 <- list(
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity== "Non-Hispanic White")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity=="Non-Hispanic Black")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Non-Hispanic AIAN")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Non-Hispanic API")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Hispanic")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Non-Hispanic Unknown"))
+) %>%
+  tbl_survfit(times = 60)
+
+MF_race_0to19 <- data.frame(table4$table_body)
+
+# creating table 2 for age columns
+table4_category <- data.frame(matrix(ncol=2,nrow=0))
+columns2<-c("Race/Ethnicity","Medicaid Flag description")
+colnames(table4_category)<-columns2
+table4_category[2,] <- c("Non-Hispanic White","Medicaid not link")
+table4_category[3,] <- c("Non-Hispanic White","Medicaid linked")
+table4_category[5,] <- c("Non-Hispanic Black","Medicaid not link")
+table4_category[6,] <- c("Non-Hispanic Black","Medicaid linked")
+table4_category[8,] <- c("Non-Hispanic AIAN","Medicaid not link")
+table4_category[9,] <- c("Non-Hispanic AIAN","Medicaid linked")
+table4_category[11,] <- c("Non-Hispanic API","Medicaid not link")
+table4_category[12,] <- c("Non-Hispanic API","Medicaid linked")
+table4_category[14,] <- c("Hispanic","Medicaid not link")
+table4_category[15,] <- c("Hispanic","Medicaid linked")
+table4_category[17,] <- c("Non-Hispanic Unknown","Medicaid not link")
+table4_category[18,] <- c("Non-Hispanic Unknown","Medicaid linked")
+
+MF_race_0to19 <- cbind(MF_race_0to19, table4_category)
+```
+
+
+# Survival plots by tumor type
+```{r}
+KMplots<-function(tumortype, figtitle){
+ 
+  # if (!is.null(tumortype)){
+  # x<<- seer0to19%>%
+    # filter(can_type == tumortype) 
+  # }
+x <<- seer0to19 %>%
+    filter(can_type == tumortype)
+
+survob <- survfit(
+    Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = x)
+    ggsurvplot(survob, data=x, xlim = c(0,60),  
+           pval=TRUE, ylim=c(50,100), fun="pct", 
+           size=0.3, 
+           conf.int=FALSE, 
+           censor=TRUE,  
+           title=figtitle,  
+           size = 1, 
+           censor.size=0.1,
+           xlab="Survival time (months)", 
+           linetype = 1,
+           legend.title="",
+           legend.labs = c("Medicaid not linked", "Medicaid linked"), palette = c("black", "blue"), break.x.by = 10) +
+theme_survminer(font.main = c(10, "bold", "black"), legend=c("bottom"), font.legend=c(10, "bold", "black"), font.y=c(10, "bold"), font.x=c(10, "bold")) 
+}
+
+A<-KMplots("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases",  "A. Leukemias, myeloproliferative  diseases, \n and myelodysplastic diseases")
+A
+
+B<-KMplots("II. Lymphomas and reticuloendothelial neoplasms",  "b. II. Lymphomas and reticuloendothelial neoplasms")
+B
+C<-KMplots("III. CNS and miscellaneous intracranial and intraspinal neoplasms",  "B. CNS and miscellaneous intracranial \n and intraspinal neoplasms")
+C
+D<-KMplots("IV. Neuroblastoma and other peripheral nervous cell tumors",  "d. IV. Neuroblastoma and other peripheral nervous cell tumors")
+D
+E <- KMplots("V. Retinoblastoma",  "e. V. Retinoblastoma")
+E
+F <- KMplots("VI. Renal tumors",  "f. VI. Renal tumors")
+F
+G <- KMplots("VII. Hepatic tumors",  "g. VII. Hepatic tumors")
+G
+H <- KMplots("VIII. Malignant bone tumors",  "h. VIII. Malignant bone tumors")
+H
+I <- KMplots("IX. Soft tissue and other extraosseous sarcomas",  "i. IX. Soft tissue and other extraosseous sarcomas")
+I
+J <- KMplots("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads",  "j. X. Germ cell tumors, trophoblastic tumors, \n and neoplasms of gonads")
+J
+K <- KMplots("XI. Other malignant epithelial neoplasms and malignant melanomas",  "k. XI. Other malignant epithelial neoplasms \n and malignant melanomas")
+L <- KMplots("XII. Other and unspecified malignant neoplasms",  "l. XII. Other and unspecified malignant neoplasms")
+L
+
+pdf("Cancer type figure.pdf", width=11, height=10, paper="USr")
+A$plot + B$plot + C$plot+ D$plot+ E$plot +F$plot +G$plot +H$plot +I$plot+ J$plot + K$plot + L$plot + plot_layout(ncol=3, nrow=4, guides='auto') &
+  theme(legend.position='bottom')
+dev.off()
+
+table5 <- A$data.survplot %>% 
+  mutate(round_time = round(time,0)) %>%
+           filter(round_time == 60)
+
+table5 <- list(
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type== "I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type=="II. Lymphomas and reticuloendothelial neoplasms")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "III. CNS and miscellaneous intracranial and intraspinal neoplasms")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "IV. Neuroblastoma and other peripheral nervous cell tumors")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "V. Retinoblastoma")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "VI. Renal tumors")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "VII. Hepatic tumors")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "VIII. Malignant bone tumors")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "IX. Soft tissue and other extraosseous sarcomas")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "XI. Other malignant epithelial neoplasms and malignant melanomas")),
+  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "XII. Other and unspecified malignant neoplasms"))
+) %>%
+  tbl_survfit(times = 60)
+
+MF_cancer_0to19 <- data.frame(table5$table_body)
+
+# creating table 2 for label columns
+table5_category <- data.frame(matrix(ncol=2,nrow=0))
+columns2<-c("Cancer type","Medicaid Flag description")
+colnames(table5_category)<-columns2
+table5_category[2,] <- c("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases","Medicaid not link")
+table5_category[3,] <- c("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases","Medicaid linked")
+table5_category[5,] <- c("II. Lymphomas and reticuloendothelial neoplasms","Medicaid not link")
+table5_category[6,] <- c("II. Lymphomas and reticuloendothelial neoplasms","Medicaid linked")
+table5_category[8,] <- c("III. CNS and miscellaneous intracranial and intraspinal neoplasms","Medicaid not link")
+table5_category[9,] <- c("III. CNS and miscellaneous intracranial and intraspinal neoplasms","Medicaid linked")
+table5_category[11,] <- c("IV. Neuroblastoma and other peripheral nervous cell tumors","Medicaid not link")
+table5_category[12,] <- c("IV. Neuroblastoma and other peripheral nervous cell tumors","Medicaid linked")
+table5_category[14,] <- c("V. Retinoblastoma","Medicaid not link")
+table5_category[15,] <- c("V. Retinoblastoma","Medicaid linked")
+table5_category[17,] <- c("VI. Renal tumors","Medicaid not link")
+table5_category[18,] <- c("VI. Renal tumors","Medicaid linked")
+table5_category[20,] <- c("VII. Hepatic tumors","Medicaid not link")
+table5_category[21,] <- c("VII. Hepatic tumors","Medicaid linked")
+table5_category[23,] <- c("VIII. Malignant bone tumors","Medicaid not link")
+table5_category[24,] <- c("VIII. Malignant bone tumors","Medicaid linked")
+table5_category[26,] <- c("IX. Soft tissue and other extraosseous sarcomas","Medicaid not link")
+table5_category[27,] <- c("IX. Soft tissue and other extraosseous sarcomas","Medicaid linked")
+table5_category[29,] <- c("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads","Medicaid not link")
+table5_category[30,] <- c("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads","Medicaid linked")
+table5_category[32,] <- c("XI. Other malignant epithelial neoplasms and malignant melanomas","Medicaid not link")
+table5_category[33,] <- c("XI. Other malignant epithelial neoplasms and malignant melanomas","Medicaid linked")
+table5_category[35,] <- c("XII. Other and unspecified malignant neoplasms","Medicaid not link")
+table5_category[36,] <- c("XII. Other and unspecified malignant neoplasms","Medicaid linked")
+
+MF_cancer_0to19 <- cbind(MF_cancer_0to19, table5_category)
+
+```
+
+# Mcont3 def
+```{r}
+p<-ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ mcont3, data =seer0to19), 
+    xlab = "Months from diagnosis", 
+    ylab = "Cancer survival proportion\n",
+    legend.title = "",
+    legend.labs = c("Not linked", 
+                    "Linked continuous", 
+                    "Linked discontinuous ", 
+                    "Linked missing data in 3 \n mo before or after dx"),
+    font.legend=c(20, "bold"),
+    legend = c("bottom"),
+    palette=c("black", "maroon2", "cyan3", "red", "green", "blue"),
+    font.x = c(24, "bold"),
+    font.y = c(24, "bold"),
+    xlim=c(0, 60),
+    ylim=c(0.5, 1),
+    censor.size=0.5,
+    break.x.by = 12,
+    font.tickslab = c(24, "bold"),
+    pval=TRUE,
+    pval.size = 12,
+    pval.coord = c(2,0.55),
+    font.title = c(34, "bold"),
+    risk.table = FALSE,
+    risk.table.fontsize=3,
+    tables.height = 0.2,
+    tables.theme = theme_cleantable())
+p
+
+p$plot + scale_x_continuous(breaks = c(0,12,24,36,48,60))
+ggsave(filename = "Continuity 3 month KM plot 0 to 19.png",
+       width = 14, height = 8.5, units = "in", bg="white") 
+```
+
+# Survival plots by age category (enrollment duration)
+```{r}
+KMplot_age<-function(age_group, figtitle){
+  x<<-seer0to19 %>%
+    filter(age_cat == age_group)
+ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ mcont3, data =x), 
+    xlab = "Months from diagnosis", 
+    ylab = "Cancer survival proportion\n",
+    title=figtitle,
+    legend.title = "",
+    legend.labs = c("Not linked", 
+                    "Linked continuous", 
+                    "Linked discontinuous ", 
+                    "Linked missing data in 3 \n mo before or after dx"),
+    font.legend=c(12, "bold"),
+    legend = c("bottom"),
+    palette=c("black", "maroon2", "cyan3", "red", "green", "blue"),
+    font.x = c(12, "bold"),
+    font.y = c(12, "bold"),
+    xlim=c(0, 60),
+    ylim=c(0.5, 1),
+    censor.size=0.5,
+    break.x.by = 12,
+    font.tickslab = c(12, "bold"),
+    pval=TRUE,
+    pval.size = 8,
+    pval.coord = c(2,0.55),
+    font.title = c(12, "bold"),
+    risk.table = FALSE,
+    risk.table.fontsize=3,
+    tables.height = 0.2,
+    tables.theme = theme_cleantable())
+}
+
+p0to4 <- KMplot_age("0-4","0-4 years")
+
+p5to9 <- KMplot_age("5-9", "5-9 years")
+
+p10to14 <- KMplot_age("10-14", "10-14 years")
+
+p15to19 <- KMplot_age("15-19", "15-19 years")
+
+pdf("KMcurveplot_agecat_2.pdf", width=11, height=10, paper="USr")
+p0to4$plot + p5to9$plot + p10to14$plot + p15to19$plot + plot_layout(ncol=2, nrow=2, guides='collect') &
+  theme(legend.position='bottom')
+dev.off()
+```
+
+# Survival plots by race/ethnicity (enrollment duration)
+```{r}
+KMplot_race<-function(race_f){
+  x<<-seer0to19 %>%
+    filter(race_ethnicity == race_f)
+ggsurvplot(fit = survfit(Surv(survmo, can_dead) ~ mcont3, data =x), 
+    xlab = "Months from diagnosis", 
+    ylab = "Cancer survival proportion\n",
+    title=race_f,
+    legend.title = "",
+    legend.labs = c("Not linked", 
+                    "Linked continuous", 
+                    "Linked discontinuous ", 
+                    "Linked missing data in 3 \n mo before or after dx"),
+    font.legend=c(12, "bold"),
+    legend = c("bottom"),
+    palette=c("black", "maroon2", "cyan3", "red", "green", "blue"),
+    font.x = c(12, "bold"),
+    font.y = c(12, "bold"),
+    xlim=c(0, 60),
+    ylim=c(0.5, 1),
+    censor.size=0.5,
+    break.x.by = 12,
+    font.tickslab = c(12, "bold"),
+    pval=TRUE,
+    pval.size = 8,
+    pval.coord = c(2,0.55),
+    font.title = c(12, "bold"),
+    risk.table = FALSE,
+    risk.table.fontsize=3,
+    tables.height = 0.2,
+    tables.theme = theme_cleantable())
+}
+
+table(seer0to19$race_ethnicity)
+pW <- KMplot_race("Non-Hispanic White")
+
+pB <- KMplot_race("Non-Hispanic Black")
+
+pAIAN <- KMplot_race("Non-Hispanic AIAN")
+
+pAPI <- KMplot_race("Non-Hispanic API")
+
+pH <- KMplot_race("Hispanic")
+
+pUn <- KMplot_race("Non-Hispanic Unknown")
+
+pdf("KMcurveplot_race_2.pdf", width=11, height=10, paper="USr")
+pW$plot + pB$plot + pAIAN$plot + pAPI$plot + pH$plot + pUn$plot + plot_layout(ncol=3, nrow=2, guides='collect') &
+  theme(legend.position='bottom')
+dev.off()
+```
+
+# make function for KM curves for tumor type
+```{r}
+KMplots<-function(tumortype, figtitle){
+  x<<-seer0to19 %>%
+    filter(can_type == tumortype)
+  survob <- survfit(
+    Surv(survmo, can_dead) ~ mcont3, data = x)
+ggsurvplot(survob, data=x, xlim = c(0,60),  
+           pval=TRUE, ylim=c(0,100), fun="pct", 
+           size=0.3, 
+           conf.int=FALSE, 
+           censor=TRUE,  
+           title=figtitle,  
+           size = 1, 
+           censor.size=0.1,
+           xlab="Survival time (months)", 
+           linetype = 1,
+           legend.title="",
+           #legend.labs = c("Private Insurance", "Medicaid"), 
+           palette = c("black", "maroon2", "cyan3", "red", "green", "blue"), break.x.by = 12) +
+theme_survminer(font.main = c(11, "bold", "black"), legend=c("right"), font.legend=c("bold", "black"), font.y=c(11, "bold"), font.x=c(11, "bold")) 
+}
+
+A<-KMplots("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases", "A. Leukemias, myeloproliferative  diseases, \n and myelodysplastic diseases")
+A
+
+B<-KMplots("II. Lymphomas and reticuloendothelial neoplasms",  "b. II. Lymphomas and reticuloendothelial neoplasms")
+B
+
+C<-KMplots("III. CNS and miscellaneous intracranial and intraspinal neoplasms",   "B. CNS and miscellaneous intracranial \n and intraspinal neoplasms")
+C
+
+D<-KMplots("IV. Neuroblastoma and other peripheral nervous cell tumors", "d. IV. Neuroblastoma and other peripheral \n  nervous cell tumors")
+D
+
+E <- KMplots("V. Retinoblastoma",  "e. V. Retinoblastoma")
+E
+
+F <- KMplots("VI. Renal tumors", "f. VI. Renal tumors")
+F
+
+G <- KMplots("VII. Hepatic tumors", "g. VII. Hepatic tumors")
+G
+
+H <- KMplots("VIII. Malignant bone tumors",  "h. VIII. Malignant bone tumors")
+H
+
+I <- KMplots("IX. Soft tissue and other extraosseous sarcomas", "i. IX. Soft tissue and other\n extraosseous sarcomas")
+I
+
+J <- KMplots("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads", "j. X. Germ cell tumors, trophoblastic tumors, \n and neoplasms of gonads")
+J
+
+K <- KMplots("XI. Other malignant epithelial neoplasms and malignant melanomas",  "k. XI. Other malignant epithelial neoplasms \n and malignant melanomas")
+K
+
+L <- KMplots("XII. Other and unspecified malignant neoplasms", "l. XII. Other and unspecified malignant neoplasms")
+L
+
+pdf("Figure.pdf", width=11, height=10, paper="USr")
+A$plot + B$plot + C$plot+ D$plot+F$plot +G$plot +H$plot +I$plot+ J$plot + K$plot + L$plot + plot_layout(ncol=4, nrow=3, guides='collect') &
+  theme(legend.position='bottom')
+dev.off()
+
+table(seer0to19$can_type, seer0to19$mcont2)
+
+```
+# Cox proportional hazards models (0 to 19) 
+```{r}
+# unadjusted model 0 TO 19
+res.cox1 <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19) # Univariable model
+res.cox1
+summary(res.cox1)
+
+# adjusted models 0 to 19
+res.cox2 <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag + race_ethnicity +age_cat + Census_Tract_Poverty_Indicator, data = seer0to19) # Model adjusted for race age and a measure of poverty
+res.cox2
+summary(res.cox2)
+
+# mcont3 unadjusted model 0 TO 19
+res.cox3 <- coxph(Surv(survmo, can_dead) ~ mcont3, data = seer0to19) # Univariable model
+res.cox3
+summary(res.cox3)
+
+# mcont3 adjusted models 0 to 19
+res.cox4 <- coxph(Surv(survmo, can_dead) ~ mcont3 + race_ethnicity +age_cat + Census_Tract_Poverty_Indicator, data = seer0to19) # Model adjusted for race age and a measure of poverty
+res.cox4
+summary(res.cox4)
+
+a<-as.data.frame(exp(cbind(HR = coef(res.cox1), confint(res.cox1))))
+   a<-a[c(1),] %>%
+    rownames_to_column() %>%
+    mutate(model="1. Unadjusted") %>%
+    mutate(age_group = "0 to 19 years") 
+   
+b<-as.data.frame(exp(cbind(HR = coef(res.cox2), confint(res.cox2))))
+   b<-b[c(1),] %>%
+    rownames_to_column() %>%
+    mutate(model="2. Adjusted for race/ethnicity, age, cenus tract poverty indicator") %>%
+    mutate(age_group = "0 to 19 years")
+
+c<-as.data.frame(exp(cbind(HR = coef(res.cox3), confint(res.cox3))))
+   c<-c[c(1,2,3),] %>%
+    rownames_to_column() %>%
+    mutate(model="3. Unadjusted") %>%
+    mutate(age_group = "0 to 19 years")
+
+d<-as.data.frame(exp(cbind(HR = coef(res.cox4), confint(res.cox4))))
+   d<-d[c(1,2,3),] %>%
+    rownames_to_column() %>%
+    mutate(model="4. Adjusted for race/ethnicity, age, cenus tract poverty indicator") %>%
+    mutate(age_group = "0 to 19 years")
+Table2 <- rbind(a,b,c,d)  
+```
+
+# Export tables to excel
+```{r}
+write.xlsx(Table2, file="SEER0to19analysis_tables.xlsx", sheetName = "Table 2. Cox PH 0 to 19", showNA=TRUE, append = FALSE)
+```
+
+# Test effect modification by age, race, cancer type
+```{r}
+# age_cat*Medicaid flag
+res.cox2em <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag + race_ethnicity +age_cat + Census_Tract_Poverty_Indicator + In_Medicaid_Flag*age_cat, data = seer0to19) # Model adjusted for race age and a measure of poverty
+summary(res.cox2em)
+library(lmtest)
+lrtest(res.cox2em, res.cox2)
+
+# significant effect modification. Run models by age group.
+
+cox <-function(agegroup, model, var){
+  x<<-seer0to19 %>%
+    filter(age_cat == agegroup)
+    
+model<-coxph(Surv(survmo, can_dead) ~ var + race_ethnicity+ Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race  and a measure of poverty
+
+a<-as.data.frame(exp(cbind(HR = coef(model), confint(model))))
+   a<-a[c(1),] %>%
+    rownames_to_column() %>%
+    mutate(model="Adjusted for race_ethnicty and census tract poverty indicator") %>%
+    mutate(age_group = agegroup) 
+   
+}
+
+cox2 <-function(agegroup, model, var){
+  x<<-seer0to19 %>%
+    filter(age_cat == agegroup)
+    
+model<-coxph(Surv(survmo, can_dead) ~ var + race_ethnicity+ Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race  and a measure of poverty
+
+
+a<-as.data.frame(exp(cbind(HR = coef(model), confint(model))))
+   a<-a[c(1,2,3),] %>%
+    rownames_to_column() %>%
+    mutate(model="Adjusted for race_ethnicty and census tract poverty indicator") %>%
+    mutate(age_group = agegroup) 
+}
+
+a<-cox("0-4", model, x$In_Medicaid_Flag)
+b<-cox("5-9", model, x$In_Medicaid_Flag)
+c<-cox("10-14", model, x$In_Medicaid_Flag)
+d<-cox("15-19", model, x$In_Medicaid_Flag)
+
+e<-cox2("0-4", model2, x$mcont3)
+f<-cox2("5-9", model2, x$mcont3)
+g<-cox2("10-14", model2, x$mcont3)
+h<-cox2("15-19", model2, x$mcont3)
+Table3 <- rbind(a,b,c,d,e,f,g,h)
+```
+# Export tables to excel
+```{r}
+write.xlsx(Table3, file="SEER0to19analysis_tables.xlsx", sheetName = "Table 3. Cox PH by age group", showNA=TRUE, append = FALSE)
+```
+
+# Test effect modification by  race
+```{r}
+# race_ethnicity*Medicaid flag
+res.cox2emr <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag + race_ethnicity + age_cat + Census_Tract_Poverty_Indicator + In_Medicaid_Flag*race_ethnicity, data = seer0to19) # Model adjusted for race age and a measure of poverty
+summary(res.cox2emr)
+lrtest(res.cox2emr, res.cox2)
+
+# Significant effect modification. Run models by race_ethnicity.
+cox <-function(race_e, model, var){
+  x<<-seer0to19 %>%
+    filter(race_ethnicity == race_e)
+    
+model<<-coxph(Surv(survmo, can_dead) ~ var  + age_cat + Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race  and a measure of poverty
+
+a<-as.data.frame(exp(cbind(HR = coef(model), confint(model))))
+   a<-a[c(1),] %>%
+    rownames_to_column() %>%
+    mutate(model="Adjusted for age cqtegory and census tract poverty indicator") %>%
+    mutate(Race = race_e) 
+   
+}
+
+cox2 <-function(race_e, model, var){
+  x<<-seer0to19 %>%
+    filter(race_ethnicity == race_e)
+    
+model<-coxph(Surv(survmo, can_dead) ~ var   + age_cat + Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race  and a measure of poverty
+
+
+a<-as.data.frame(exp(cbind(HR = coef(model), confint(model))))
+   a<-a[c(1,2,3),] %>%
+    rownames_to_column() %>%
+    mutate(model="Adjusted for race_ethnicty and census tract poverty indicator") %>%
+    mutate(Race = race_e) 
+}
+
+
+a<-cox("Non-Hispanic White", model, x$In_Medicaid_Flag) 
+b<-cox("Non-Hispanic Black", model, x$In_Medicaid_Flag)
+c<-cox("Non-Hispanic AIAN", model, x$In_Medicaid_Flag)
+d<-cox("Non-Hispanic API", model, x$In_Medicaid_Flag)
+e<-cox("Non-Hispanic Unknown", model, x$In_Medicaid_Flag)
+f<-cox("Hispanic", model, x$In_Medicaid_Flag)
+
+h<-cox2("Non-Hispanic White", model2, x$mcont3)
+i<-cox2("Non-Hispanic Black", model2, x$mcont3)
+j<-cox2("Non-Hispanic AIAN", model2, x$mcont3)
+k<-cox2("Non-Hispanic API", model2, x$mcont3)
+l<-cox2("Non-Hispanic Unknown", model2, x$mcont3)
+m<-cox2("Hispanic", model2, x$mcont3)
+
+Table4 <- rbind(a,b,c,d,e,f,h,i,j,k,l,m)
+
+table(seer0to19$race_ethnicity)
+```
+
+# Export tables to excel
+```{r}
+write.xlsx(Table4, file="SEER0to19analysis_tables.xlsx", sheetName = "Table 4. Cox PH by race ethnicity", showNA=TRUE, append = FALSE)
+```
+
+# Test effect modification by  cancer type
+```{r}
+
+# can_type adjusted
+res.cox5 <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag + race_ethnicity + age_cat + Census_Tract_Poverty_Indicator + can_type, data = seer0to19) # Model adjusted for race age and a measure of poverty
+summary(res.cox5)
+
+# can_type*Medicaid flag
+res.cox5em <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag + race_ethnicity + age_cat + Census_Tract_Poverty_Indicator + can_type + In_Medicaid_Flag*can_type, data = seer0to19) # Model adjusted for race age and a measure of poverty
+summary(res.cox5em)
+lrtest(res.cox5, res.cox5em)
+
+# Significant effect modification. Run models by race_ethnicity.
+cox <-function(race_e, model, var){
+  x<<-seer0to19 %>%
+    filter(race_ethnicity == race_e)
+    
+model<<-coxph(Surv(survmo, can_dead) ~ var  + age_cat + Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race  and a measure of poverty
+
+a<-as.data.frame(exp(cbind(HR = coef(model), confint(model))))
+   a<-a[c(1),] %>%
+    rownames_to_column() %>%
+    mutate(model="Adjusted for age cqtegory and census tract poverty indicator") %>%
+    mutate(Race = race_e) 
+   
+}
+
+cox2 <-function(race_e, model, var){
+  x<<-seer0to19 %>%
+    filter(race_ethnicity == race_e)
+    
+model<-coxph(Surv(survmo, can_dead) ~ var   + age_cat + Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race  and a measure of poverty
+
+
+a<-as.data.frame(exp(cbind(HR = coef(model), confint(model))))
+   a<-a[c(1,2,3),] %>%
+    rownames_to_column() %>%
+    mutate(model="Adjusted for race_ethnicty and census tract poverty indicator") %>%
+    mutate(Race = race_e) 
+}
+
+# get results for each cancer type for In_Medicaid_Flag
+```{r}
+cox <-function(tumortype){
+  x<<-seer0to19 %>%
+    filter(can_typeAYA == tumortype)
+    
+coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag + race_cat+ Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race  and a measure of poverty
+}
+
+a <- summary(cox("1. Leukemias"))
+a
+
+b <- summary(cox("2. Lymphomas"))
+b
+
+c <- summary(cox("3. CNS and Other Intracranial and Intraspinal Neoplasms (all behaviors)"))
+c
+
+d <- summary(cox("4. Osseous & Chondromatous Neoplasms"))
+d
+
+e <- summary(cox("5. Soft Tissue Sarcomas"))
+e
+
+f <- summary(cox("6. Germ Cell and Trophoblastic Neoplasms"))
+f
+
+g <- summary(cox("7. Melanoma and Skin Carcinomas"))
+g
+
+h <- summary(cox("8. Carcinomas"))
+h
+
+i <- summary(cox("9. Miscellaneous specified neoplasms, NOS"))
+i
+```
+# get results for each cancer type for mcont3
+```{r}
+cox <-function(tumortype){
+  x<<-seer20to39 %>%
+    filter(can_type == tumortype)
+    
+coxph(Surv(survmo, can_dead) ~ mcont3 + race_cat+ Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race  and a measure of poverty
+}
+
+a <- summary(cox("1. Leukemias"))
+a
+
+b <- summary(cox("2. Lymphomas"))
+b
+
+c <- summary(cox("3. CNS and Other Intracranial and Intraspinal Neoplasms (all behaviors)"))
+c
+
+d <- summary(cox("4. Osseous & Chondromatous Neoplasms"))
+d
+
+e <- summary(cox("5. Soft Tissue Sarcomas"))
+e
+
+f <- summary(cox("6. Germ Cell and Trophoblastic Neoplasms"))
+f
+
+g <- summary(cox("7. Melanoma and Skin Carcinomas"))
+g
+
+h <- summary(cox("8. Carcinomas"))
+h
+
+i <- summary(cox("9. Miscellaneous specified neoplasms, NOS"))
+i
+```
+
+
+```{r}
+# adjusted model for leukemia and CNS tumors
+leuk <-seer0to19 %>%
+  filter(can_type == "I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases", insurance %in% c("Private Insurance", "Medicaid"))
+  
+leuk.cox <- coxph(Surv(survmo, can_dead) ~ insurance +race_cat +age_cat + Census_Tract_Poverty_Indicator, data = leuk) # Model adjusted for race age and a measure of poverty
+leuk.cox
+summary(leuk.cox)
+
+brain <-seer0to19 %>%
+  filter(can_type == "III. CNS and miscellaneous intracranial and intraspinal neoplasms", insurance %in% c("Private Insurance", "Medicaid"))
+
+brain.cox <- coxph(Surv(survmo, can_dead) ~ insurance +race_cat +age_cat + Census_Tract_Poverty_Indicator, data = brain) # Model adjusted for race age and a measure of poverty
+brain.cox
+summary(brain.cox)
+
+# Interactions
+# race_cat
+res.cox2 <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag +race_cat +age_cat + Census_Tract_Poverty_Indicator + race_cat*In_Medicaid_Flag, data = seer0to19) # Model adjusted for race age and a measure of poverty
+res.cox2
+summary(res.cox2)
+
+# census tract poverty indicator
+res.cox3 <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag +race_cat +age_cat + Census_Tract_Poverty_Indicator + Census_Tract_Poverty_Indicator*In_Medicaid_Flag, data = seer0to19) # Model adjusted for race age and a measure of poverty
+res.cox3
+summary(res.cox3)
+```
+
+# Effect Modification by race
+```{r}
+# model with interaction term between race category and medicaid flag
+res.cox2_em <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag +race_cat +age_cat + Census_Tract_Poverty_Indicator + race_cat*In_Medicaid_Flag, data = seer0to19) # Model adjusted for race age and a measure of poverty
+summary(res.cox2_em)
+
+# likelihood ratio test
+library(lmtest)
+lrtest(res.cox2, res.cox2_em)
+
+# model with interaction term between race cateogry and mcont3
+res.cox4_em <- coxph(Surv(survmo, can_dead) ~ mcont3 + race_cat +age_cat + Census_Tract_Poverty_Indicator + race_cat*mcont3, data = seer0to19) # Model adjusted for race age and a measure of poverty
+summary(res.cox4_em)
+
+#likelihood ratio test
+lrtest(res.cox4, res.cox4_em)
+```
+
+# Effect Modification by age category
+```{r}
+# model with interaction term between age category and medicaid flag
+res.cox2_em2 <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag +race_cat +age_cat + Census_Tract_Poverty_Indicator + age_cat*In_Medicaid_Flag, data = seer0to19) # Model adjusted for race age and a measure of poverty
+res.cox2_em2
+summary(res.cox2_em2)
+
+# likelihood ratio test
+library(lmtest)
+lrtest(res.cox2, res.cox2_em2)
+
+# model with interaction term between age cateogry and mcont3
+res.cox4_em2 <- coxph(Surv(survmo, can_dead) ~ mcont3 + race_cat +age_cat + Census_Tract_Poverty_Indicator + age_cat*mcont3, data = seer0to19) # Model adjusted for race age and a measure of poverty
+summary(res.cox4_em2)
+
+#likelihood ratio test
+lrtest(res.cox4, res.cox4_em2)
+```
+
+# Effect Modification by tumor type
+```{r}
+# model without interaction term between tumor type and medicaid flag
+res.cox5 <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag +race_cat +age_cat + Census_Tract_Poverty_Indicator + can_type, data = seer0to19) # Model adjusted for race age and a measure of poverty
+res.cox5
+summary(res.cox5)
+
+# model with interaction term between tumor type and medicaid flag
+res.cox5_em <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag +race_cat +age_cat + Census_Tract_Poverty_Indicator + can_type + can_type*In_Medicaid_Flag, data = seer0to19) # Model adjusted for race age and a measure of poverty
+res.cox5_em
+summary(res.cox5_em)
+
+# likelihood ratio test
+library(lmtest)
+lrtest(res.cox5, res.cox5_em)
+
+# model without interaction term between tumor type and medicaid enrollment flag
+res.cox6 <- coxph(Surv(survmo, can_dead) ~ mcont3 +race_cat +age_cat + Census_Tract_Poverty_Indicator + can_type, data = seer0to19) # Model adjusted for race age and a measure of poverty
+res.cox6
+summary(res.cox6)
+
+# model with interaction term between tumor type and medicaid flag
+res.cox6_em <- coxph(Surv(survmo, can_dead) ~ mcont3 +race_cat +age_cat + Census_Tract_Poverty_Indicator + can_type + can_type*mcont3, data = seer0to19) # Model adjusted for race age and a measure of poverty
+res.cox6_em
+summary(res.cox6_em)
+
+# likelihood ratio test
+library(lmtest)
+lrtest(res.cox6, res.cox6_em)
+```
+
+### Stratified models by age category
+```{r}
+age_strat <- function(age_f, outcome_var, model_outcome){
+  seer0to19$outcome_var <<- outcome_var
+  x <- seer0to19 %>%
+      filter(age_cat == age_f)
+model<-coxph(Surv(survmo, can_dead) ~ outcome_var +race_cat +age_cat + Census_Tract_Poverty_Indicator, data = x)
+model_coef <- summary(model)
+
+r <- data.frame(model_coef$coefficients)
+
+# calculating odds ratio
+r$HR <- round(exp(r$coef),2)
+# calculating confidence intervals
+r$lower95 <- round(exp(r$coef - 1.96*r$se.coef.),2)
+r$upper95 <- round(exp(r$coef + 1.96*r$se.coef.),2)
+
+r <- r%>%rownames_to_column() %>%
+  mutate(model_outcome = model_outcome) %>%
+  mutate(Age_Group = age_f)
+r<-r[,c(1,7:11)]
+
+}
+
+A_flag <- age_strat("0-4", seer0to19$In_Medicaid_Flag, "In_Medicaid_Flag")
+B_flag <- age_strat("5-9", seer0to19$In_Medicaid_Flag, "In_Medicaid_Flag")
+C_flag <- age_strat("10-14", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+D_flag <- age_strat("15-19", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+
+A_dur <- age_strat("0-4", seer0to19$mcont3, "Enrollment duration")
+B_dur <- age_strat("5-9", seer0to19$mcont3, "Enrollment duration")
+C_dur <- age_strat("10-14", seer0to19$mcont3, "Enrollment duration")
+D_dur <- age_strat("15-19", seer0to19$mcont3, "Enrollment duration")
+
+age_table <- rbind(A_flag[c(1),],B_flag[c(1),],C_flag[c(1),],D_flag[c(1),],A_dur[c(1:3),],B_dur[c(1:3),],C_dur[c(1:3),],D_dur[c(1:3),])
+
+
+```
+
+# Export tables to excel
+```{r}
+library(openxlsx)
+write.xlsx(age_table, file="age_stratified_tables.xlsx", showNA=TRUE, overwrite=TRUE)
+
+```
+
+### Stratified models by tumor type
+```{r}
+cancer_strat <- function(tumor_type, outcome_var, model_outcome){
+  seer0to19$outcome_var <<- outcome_var
+  x <- seer0to19 %>%
+      filter(can_type == tumor_type)
+model<-coxph(Surv(survmo, can_dead) ~ outcome_var +race_cat +age_cat + Census_Tract_Poverty_Indicator, data = x)
+model_coef <- summary(model)
+
+r <- data.frame(model_coef$coefficients)
+
+# calculating odds ratio
+r$HR <- round(exp(r$coef),2)
+# calculating confidence intervals
+r$lower95 <- round(exp(r$coef - 1.96*r$se.coef.),2)
+r$upper95 <- round(exp(r$coef + 1.96*r$se.coef.),2)
+
+r <- r%>%rownames_to_column() %>%
+  mutate(model_outcome = model_outcome) %>%
+  mutate(Cancer_type = tumor_type)
+r<-r[,c(1,7:11)]
+
+}
+
+A_flag <- cancer_strat("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases", seer0to19$In_Medicaid_Flag, "In_Medicaid_Flag")
+B_flag <- cancer_strat("II. Lymphomas and reticuloendothelial neoplasms", seer0to19$In_Medicaid_Flag, "In_Medicaid_Flag")
+C_flag <- cancer_strat("III. CNS and miscellaneous intracranial and intraspinal neoplasms", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+D_flag <- cancer_strat("IV. Neuroblastoma and other peripheral nervous cell tumors", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+E_flag <- cancer_strat("V. Retinoblastoma", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+F_flag <- cancer_strat("VI. Renal tumors", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+G_flag <- cancer_strat("VII. Hepatic tumors", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+H_flag <- cancer_strat("VIII. Malignant bone tumors", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+I_flag <- cancer_strat("IX. Soft tissue and other extraosseous sarcomas", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+J_flag <- cancer_strat("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+K_flag <- cancer_strat("XI. Other malignant epithelial neoplasms and malignant melanomas", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+L_flag <- cancer_strat("XII. Other and unspecified malignant neoplasms", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
+
+type_table <- rbind(A_flag[c(1),],B_flag[c(1),],C_flag[c(1),],D_flag[c(1),],E_flag[c(1),],F_flag[c(1),],G_flag[c(1),],H_flag[c(1),],I_flag[c(1),],J_flag[c(1),],K_flag[c(1),],L_flag[c(1),])
+
+
+```
+# Export tables to excel
+```{r}
+library(openxlsx)
+write.xlsx(type_table, file="type_stratified_tables.xlsx", showNA=TRUE, overwrite=TRUE)
+
+```
