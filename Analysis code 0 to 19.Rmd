@@ -7,7 +7,7 @@ output: html_document
 
 # Open libraries
 ```{r}
-pacman::p_load(readr, dplyr, tidyverse, lubridate, survival, survminer, hablar, table1, patchwork, xlsx)
+pacman::p_load(readr, dplyr, tidyverse, lubridate, survival, survminer, hablar, table1, patchwork, openxlsx)
 ```
 
 # Import files sent by SEER Medicaid and get data into right columns, assign column names
@@ -1043,6 +1043,7 @@ dev.off()
 table(seer0to19$can_type, seer0to19$mcont2)
 
 ```
+
 # Cox proportional hazards models (0 to 19) 
 ```{r}
 # unadjusted model 0 TO 19
@@ -1089,11 +1090,6 @@ d<-as.data.frame(exp(cbind(HR = coef(res.cox4), confint(res.cox4))))
     mutate(model="4. Adjusted for race/ethnicity, age, cenus tract poverty indicator") %>%
     mutate(age_group = "0 to 19 years")
 Table2 <- rbind(a,b,c,d)  
-```
-
-# Export tables to excel
-```{r}
-write.xlsx(Table2, file="SEER0to19analysis_tables.xlsx", sheetName = "Table 2. Cox PH 0 to 19", showNA=TRUE, append = FALSE)
 ```
 
 # Test effect modification by age, race, cancer type
@@ -1144,10 +1140,6 @@ f<-cox2("5-9", model2, x$mcont3)
 g<-cox2("10-14", model2, x$mcont3)
 h<-cox2("15-19", model2, x$mcont3)
 Table3 <- rbind(a,b,c,d,e,f,g,h)
-```
-# Export tables to excel
-```{r}
-write.xlsx(Table3, file="SEER0to19analysis_tables.xlsx", sheetName = "Table 3. Cox PH by age group", showNA=TRUE, append = FALSE)
 ```
 
 # Test effect modification by  race
@@ -1206,10 +1198,6 @@ Table4 <- rbind(a,b,c,d,e,f,h,i,j,k,l,m)
 table(seer0to19$race_ethnicity)
 ```
 
-# Export tables to excel
-```{r}
-write.xlsx(Table4, file="SEER0to19analysis_tables.xlsx", sheetName = "Table 4. Cox PH by race ethnicity", showNA=TRUE, append = FALSE)
-```
 
 # Test effect modification by  cancer type
 ```{r}
@@ -1251,8 +1239,10 @@ a<-as.data.frame(exp(cbind(HR = coef(model), confint(model))))
     mutate(model="Adjusted for race_ethnicty and census tract poverty indicator") %>%
     mutate(Race = race_e) 
 }
+```
 
-# get results for each cancer type for In_Medicaid_Flag
+
+# Get results for each cancer type for In_Medicaid_Flag
 ```{r}
 cox <-function(tumortype){
   x<<-seer0to19 %>%
@@ -1287,7 +1277,32 @@ h
 
 i <- summary(cox("9. Miscellaneous specified neoplasms, NOS"))
 i
+
+a<-cox("Non-Hispanic White", model, x$In_Medicaid_Flag) 
+b<-cox("Non-Hispanic Black", model, x$In_Medicaid_Flag)
+c<-cox("Non-Hispanic AIAN", model, x$In_Medicaid_Flag)
+d<-cox("Non-Hispanic API", model, x$In_Medicaid_Flag)
+e<-cox("Non-Hispanic Unknown", model, x$In_Medicaid_Flag)
+f<-cox("Hispanic", model, x$In_Medicaid_Flag)
+
+h<-cox2("Non-Hispanic White", model2, x$mcont3)
+i<-cox2("Non-Hispanic Black", model2, x$mcont3)
+j<-cox2("Non-Hispanic AIAN", model2, x$mcont3)
+k<-cox2("Non-Hispanic API", model2, x$mcont3)
+l<-cox2("Non-Hispanic Unknown", model2, x$mcont3)
+m<-cox2("Hispanic", model2, x$mcont3)
+
+Table4 <- rbind(a,b,c,d,e,f,h,i,j,k,l,m)
 ```
+# export data to excel (Tables 2-4)
+```{r}
+sheets<-list("Table2 (overall CPH)" = Table2,
+             "Table 3 (by age category)" = Table3,
+             "Table 4 (by race ethnicity)" = Table4)
+write.xlsx(sheets, file="SEER0to19analysis_tables.xlsx", keepNA=TRUE, overwrite=TRUE)
+```
+
+
 # get results for each cancer type for mcont3
 ```{r}
 cox <-function(tumortype){
