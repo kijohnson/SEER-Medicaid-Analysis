@@ -595,26 +595,15 @@ st15to19<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer
 st15to19
 
 
-library(gtsummary)
-table3 <- list(
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "0-4")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "5-9")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "10-14")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(age_cat == "15-19"))
-) %>%
-  tbl_survfit(times = 60)
-
-ST_MF_0to19 <- data.frame(table3$table_body)
-
 # Creating a table with the survival probilities and 95% CIs
 table1<-data.frame(matrix(ncol=4, nrow=0)) #create the table
 columns<-c("Medicaid Flag", "Survival Percentage",  "LowerCI", "UpperCI") #label the columns with names
 colnames(table1)<-columns
 #Plug in the data below
-table1[1:2,]<-c(st0to4$strata, st0to4$surv, st0to4$lower , st0to4$upper)
-table1[3:4,]<-c(st5to9$strata, st5to9$surv, st5to9$lower , st5to9$upper)
-table1[5:6,]<-c(st10to14$strata, st10to14$surv, st10to14$lower , st10to14$upper)
-table1[7:8,]<-c(st15to19$strata, st15to19$surv, st15to19$lower , st15to19$upper)
+table1[1:2,]<-c(st0to4$strata, round(st0to4$surv,3)*100, round(st0to4$lower,3)*100 , round(st0to4$upper,3)*100)
+table1[3:4,]<-c(st5to9$strata, round(st5to9$surv,3)*100, round(st5to9$lower,3)*100 , round(st5to9$upper,3)*100)
+table1[5:6,]<-c(st10to14$strata, round(st10to14$surv,3)*100, round(st10to14$lower,3)*100 , round(st10to14$upper,3)*100)
+table1[7:8,]<-c(st15to19$strata, round(st15to19$surv,3)*100, round(st15to19$lower,3)*100 , round(st15to19$upper,3)*100)
 # creating table 2 for age columns
 table2<-data.frame(matrix(ncol=2,nrow=0))
 columns2<-c("Age Category","Medicaid Flag description")
@@ -694,36 +683,36 @@ stHIS
 stNHU<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Non-Hispanic Unknown")), times = 60)
 stNHU
 
-table4 <- list(
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity== "Non-Hispanic White")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity=="Non-Hispanic Black")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Non-Hispanic AIAN")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Non-Hispanic API")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Hispanic")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(race_ethnicity == "Non-Hispanic Unknown"))
-) %>%
-  tbl_survfit(times = 60)
-
-MF_race_0to19 <- data.frame(table4$table_body)
+# Creating a table with the survival probabilities and 95% CIs
+table4<-data.frame(matrix(ncol=4, nrow=0)) #create the table
+columns<-c("Medicaid Flag", "Survival Percentage",  "LowerCI", "UpperCI") #label the columns with names
+colnames(table4)<-columns
+#Plug in the data below
+table4[1:2,]<-c(stNHW$strata, round(stNHW$surv,3)*100, round(stNHW$lower,3)*100 , round(stNHW$upper,3)*100)
+table4[3:4,]<-c(stNHB$strata, round(stNHB$surv,3)*100, round(stNHB$lower,3)*100 , round(stNHB$upper,3)*100)
+table4[5:6,]<-c(stAIAN$strata, round(stAIAN$surv,3)*100, round(stAIAN$lower,3)*100 , round(stAIAN$upper,3)*100)
+table4[7:8,]<-c(stAPI$strata, round(stAPI$surv,3)*100, round(stAPI$lower,3)*100 , round(stAPI$upper,3)*100)
+table4[9:10,]<-c(stHIS$strata, round(stHIS$surv,3)*100, round(stHIS$lower,3)*100 , round(stHIS$upper,3)*100)
+table4[11:12,]<-c(stNHU$strata, round(stNHU$surv,3)*100, round(stNHU$lower,3)*100 , round(stNHU$upper,3)*100)
 
 # creating table 2 for age columns
 table4_category <- data.frame(matrix(ncol=2,nrow=0))
 columns2<-c("Race/Ethnicity","Medicaid Flag description")
 colnames(table4_category)<-columns2
-table4_category[2,] <- c("Non-Hispanic White","Medicaid not link")
-table4_category[3,] <- c("Non-Hispanic White","Medicaid linked")
-table4_category[5,] <- c("Non-Hispanic Black","Medicaid not link")
-table4_category[6,] <- c("Non-Hispanic Black","Medicaid linked")
-table4_category[8,] <- c("Non-Hispanic AIAN","Medicaid not link")
-table4_category[9,] <- c("Non-Hispanic AIAN","Medicaid linked")
-table4_category[11,] <- c("Non-Hispanic API","Medicaid not link")
-table4_category[12,] <- c("Non-Hispanic API","Medicaid linked")
-table4_category[14,] <- c("Hispanic","Medicaid not link")
-table4_category[15,] <- c("Hispanic","Medicaid linked")
-table4_category[17,] <- c("Non-Hispanic Unknown","Medicaid not link")
-table4_category[18,] <- c("Non-Hispanic Unknown","Medicaid linked")
+table4_category[1,] <- c("Non-Hispanic White","Medicaid not link")
+table4_category[2,] <- c("Non-Hispanic White","Medicaid linked")
+table4_category[3,] <- c("Non-Hispanic Black","Medicaid not link")
+table4_category[4,] <- c("Non-Hispanic Black","Medicaid linked")
+table4_category[5,] <- c("Non-Hispanic AIAN","Medicaid not link")
+table4_category[6,] <- c("Non-Hispanic AIAN","Medicaid linked")
+table4_category[7,] <- c("Non-Hispanic API","Medicaid not link")
+table4_category[8,] <- c("Non-Hispanic API","Medicaid linked")
+table4_category[9,] <- c("Hispanic","Medicaid not link")
+table4_category[10,] <- c("Hispanic","Medicaid linked")
+table4_category[11,] <- c("Non-Hispanic Unknown","Medicaid not link")
+table4_category[12,] <- c("Non-Hispanic Unknown","Medicaid linked")
 
-MF_race_0to19 <- cbind(MF_race_0to19, table4_category)
+MF_race_0to19 <- cbind(table4_category, table4)
 ```
 
 
@@ -785,58 +774,91 @@ A$plot + B$plot + C$plot+ D$plot+ E$plot +F$plot +G$plot +H$plot +I$plot+ J$plot
   theme(legend.position='bottom')
 dev.off()
 
-table5 <- A$data.survplot %>% 
-  mutate(round_time = round(time,0)) %>%
-           filter(round_time == 60)
+stA<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type== "I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases")), times = 60)
+stA
 
-table5 <- list(
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type== "I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type=="II. Lymphomas and reticuloendothelial neoplasms")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "III. CNS and miscellaneous intracranial and intraspinal neoplasms")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "IV. Neuroblastoma and other peripheral nervous cell tumors")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "V. Retinoblastoma")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "VI. Renal tumors")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "VII. Hepatic tumors")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "VIII. Malignant bone tumors")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "IX. Soft tissue and other extraosseous sarcomas")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "XI. Other malignant epithelial neoplasms and malignant melanomas")),
-  survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "XII. Other and unspecified malignant neoplasms"))
-) %>%
-  tbl_survfit(times = 60)
+stB<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type=="II. Lymphomas and reticuloendothelial neoplasms")), times = 60)
+stB
 
-MF_cancer_0to19 <- data.frame(table5$table_body)
+stC<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "III. CNS and miscellaneous intracranial and intraspinal neoplasms")), times = 60)
+stC
+
+stD<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "IV. Neuroblastoma and other peripheral nervous cell tumors")), times = 60)
+stD
+
+
+stE<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "V. Retinoblastoma")), times = 60)
+stE
+
+stF<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "VI. Renal tumors")), times = 60)
+stF
+
+stG<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "VII. Hepatic tumors")), times = 60)
+stG
+
+stH<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "VIII. Malignant bone tumors")), times = 60)
+stH
+
+stI<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "IX. Soft tissue and other extraosseous sarcomas")), times = 60)
+stI
+
+stJ<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads")), times = 60)
+stJ
+
+stK<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "XI. Other malignant epithelial neoplasms and malignant melanomas")), times = 60)
+stK
+
+stL<-summary(survfit(Surv(survmo, can_dead) ~ In_Medicaid_Flag, data = seer0to19%>%filter(can_type == "XII. Other and unspecified malignant neoplasms")), times = 60)
+stL
+
+# Creating a table with the survival probabilities and 95% CIs
+table5<-data.frame(matrix(ncol=4, nrow=0)) #create the table
+columns<-c("Medicaid Flag", "Survival Percentage",  "LowerCI", "UpperCI") #label the columns with names
+colnames(table5)<-columns
+#Plug in the data below
+table5[1:2,]<-c(stA$strata, round(stA$surv,3)*100, round(stA$lower,3)*100 , round(stA$upper,3)*100)
+table5[3:4,]<-c(stB$strata, round(stB$surv,3)*100, round(stB$lower,3)*100 , round(stB$upper,3)*100)
+table5[5:6,]<-c(stC$strata, round(stC$surv,3)*100, round(stC$lower,3)*100 , round(stC$upper,3)*100)
+table5[7:8,]<-c(stD$strata, round(stD$surv,3)*100, round(stD$lower,3)*100 , round(stD$upper,3)*100)
+table5[9:10,]<-c(stE$strata, round(stE$surv,3)*100, round(stE$lower,3)*100 , round(stE$upper,3)*100)
+table5[11:12,]<-c(stF$strata, round(stF$surv,3)*100, round(stF$lower,3)*100 , round(stF$upper,3)*100)
+table5[13:14,]<-c(stG$strata, round(stG$surv,3)*100, round(stG$lower,3)*100 , round(stG$upper,3)*100)
+table5[15:16,]<-c(stH$strata, round(stH$surv,3)*100, round(stH$lower,3)*100 , round(stH$upper,3)*100)
+table5[17:18,]<-c(stI$strata, round(stI$surv,3)*100, round(stI$lower,3)*100 , round(stI$upper,3)*100)
+table5[19:20,]<-c(stJ$strata, round(stJ$surv,3)*100, round(stJ$lower,3)*100 , round(stJ$upper,3)*100)
+table5[21:22,]<-c(stK$strata, round(stK$surv,3)*100, round(stK$lower,3)*100 , round(stK$upper,3)*100)
+table5[23:24,]<-c(stL$strata, round(stL$surv,3)*100, round(stL$lower,3)*100 , round(stL$upper,3)*100)
 
 # creating table 2 for label columns
 table5_category <- data.frame(matrix(ncol=2,nrow=0))
 columns2<-c("Cancer type","Medicaid Flag description")
 colnames(table5_category)<-columns2
-table5_category[2,] <- c("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases","Medicaid not link")
-table5_category[3,] <- c("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases","Medicaid linked")
-table5_category[5,] <- c("II. Lymphomas and reticuloendothelial neoplasms","Medicaid not link")
-table5_category[6,] <- c("II. Lymphomas and reticuloendothelial neoplasms","Medicaid linked")
-table5_category[8,] <- c("III. CNS and miscellaneous intracranial and intraspinal neoplasms","Medicaid not link")
-table5_category[9,] <- c("III. CNS and miscellaneous intracranial and intraspinal neoplasms","Medicaid linked")
-table5_category[11,] <- c("IV. Neuroblastoma and other peripheral nervous cell tumors","Medicaid not link")
-table5_category[12,] <- c("IV. Neuroblastoma and other peripheral nervous cell tumors","Medicaid linked")
-table5_category[14,] <- c("V. Retinoblastoma","Medicaid not link")
-table5_category[15,] <- c("V. Retinoblastoma","Medicaid linked")
-table5_category[17,] <- c("VI. Renal tumors","Medicaid not link")
-table5_category[18,] <- c("VI. Renal tumors","Medicaid linked")
-table5_category[20,] <- c("VII. Hepatic tumors","Medicaid not link")
-table5_category[21,] <- c("VII. Hepatic tumors","Medicaid linked")
-table5_category[23,] <- c("VIII. Malignant bone tumors","Medicaid not link")
-table5_category[24,] <- c("VIII. Malignant bone tumors","Medicaid linked")
-table5_category[26,] <- c("IX. Soft tissue and other extraosseous sarcomas","Medicaid not link")
-table5_category[27,] <- c("IX. Soft tissue and other extraosseous sarcomas","Medicaid linked")
-table5_category[29,] <- c("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads","Medicaid not link")
-table5_category[30,] <- c("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads","Medicaid linked")
-table5_category[32,] <- c("XI. Other malignant epithelial neoplasms and malignant melanomas","Medicaid not link")
-table5_category[33,] <- c("XI. Other malignant epithelial neoplasms and malignant melanomas","Medicaid linked")
-table5_category[35,] <- c("XII. Other and unspecified malignant neoplasms","Medicaid not link")
-table5_category[36,] <- c("XII. Other and unspecified malignant neoplasms","Medicaid linked")
+table5_category[1,] <- c("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases","Medicaid not link")
+table5_category[2,] <- c("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases","Medicaid linked")
+table5_category[3,] <- c("II. Lymphomas and reticuloendothelial neoplasms","Medicaid not link")
+table5_category[4,] <- c("II. Lymphomas and reticuloendothelial neoplasms","Medicaid linked")
+table5_category[5,] <- c("III. CNS and miscellaneous intracranial and intraspinal neoplasms","Medicaid not link")
+table5_category[6,] <- c("III. CNS and miscellaneous intracranial and intraspinal neoplasms","Medicaid linked")
+table5_category[7,] <- c("IV. Neuroblastoma and other peripheral nervous cell tumors","Medicaid not link")
+table5_category[8,] <- c("IV. Neuroblastoma and other peripheral nervous cell tumors","Medicaid linked")
+table5_category[9,] <- c("V. Retinoblastoma","Medicaid not link")
+table5_category[10,] <- c("V. Retinoblastoma","Medicaid linked")
+table5_category[11,] <- c("VI. Renal tumors","Medicaid not link")
+table5_category[12,] <- c("VI. Renal tumors","Medicaid linked")
+table5_category[13,] <- c("VII. Hepatic tumors","Medicaid not link")
+table5_category[14,] <- c("VII. Hepatic tumors","Medicaid linked")
+table5_category[15,] <- c("VIII. Malignant bone tumors","Medicaid not link")
+table5_category[16,] <- c("VIII. Malignant bone tumors","Medicaid linked")
+table5_category[17,] <- c("IX. Soft tissue and other extraosseous sarcomas","Medicaid not link")
+table5_category[18,] <- c("IX. Soft tissue and other extraosseous sarcomas","Medicaid linked")
+table5_category[19,] <- c("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads","Medicaid not link")
+table5_category[20,] <- c("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads","Medicaid linked")
+table5_category[21,] <- c("XI. Other malignant epithelial neoplasms and malignant melanomas","Medicaid not link")
+table5_category[22,] <- c("XI. Other malignant epithelial neoplasms and malignant melanomas","Medicaid linked")
+table5_category[23,] <- c("XII. Other and unspecified malignant neoplasms","Medicaid not link")
+table5_category[24,] <- c("XII. Other and unspecified malignant neoplasms","Medicaid linked")
 
-MF_cancer_0to19 <- cbind(MF_cancer_0to19, table5_category)
+MF_cancer_0to19 <- cbind(table5_category, table5)
 
 ```
 
@@ -1142,7 +1164,7 @@ h<-cox2("15-19", model2, x$mcont3)
 Table3 <- rbind(a,b,c,d,e,f,g,h)
 ```
 
-# Test effect modification by  race
+# Test effect modification by race
 ```{r}
 # race_ethnicity*Medicaid flag
 res.cox2emr <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag + race_ethnicity + age_cat + Census_Tract_Poverty_Indicator + In_Medicaid_Flag*race_ethnicity, data = seer0to19) # Model adjusted for race age and a measure of poverty
@@ -1199,9 +1221,8 @@ table(seer0to19$race_ethnicity)
 ```
 
 
-# Test effect modification by  cancer type
+# Test effect modification by cancer type
 ```{r}
-
 # can_type adjusted
 res.cox5 <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag + race_ethnicity + age_cat + Census_Tract_Poverty_Indicator + can_type, data = seer0to19) # Model adjusted for race age and a measure of poverty
 summary(res.cox5)
@@ -1211,34 +1232,63 @@ res.cox5em <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag + race_ethnicity +
 summary(res.cox5em)
 lrtest(res.cox5, res.cox5em)
 
-# Significant effect modification. Run models by race_ethnicity.
-cox <-function(race_e, model, var){
+# Significant effect modification. Run models by cancer type.
+cox <-function(can_type_e, model, var){
   x<<-seer0to19 %>%
-    filter(race_ethnicity == race_e)
+    filter(can_type == can_type_e)
     
-model<<-coxph(Surv(survmo, can_dead) ~ var  + age_cat + Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race  and a measure of poverty
+model<<-coxph(Surv(survmo, can_dead) ~ var  + age_cat + race_ethnicity + Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race, age category, and a measure of poverty
 
 a<-as.data.frame(exp(cbind(HR = coef(model), confint(model))))
    a<-a[c(1),] %>%
     rownames_to_column() %>%
-    mutate(model="Adjusted for age cqtegory and census tract poverty indicator") %>%
-    mutate(Race = race_e) 
+    mutate(model="Adjusted for age cqtegory, race, and census tract poverty indicator") %>%
+    mutate(Cancer_Type = can_type_e) 
    
 }
 
-cox2 <-function(race_e, model, var){
+cox2 <-function(can_type_e, model, var){
   x<<-seer0to19 %>%
-    filter(race_ethnicity == race_e)
+    filter(can_type == can_type_e)
     
-model<-coxph(Surv(survmo, can_dead) ~ var   + age_cat + Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race  and a measure of poverty
+model<-coxph(Surv(survmo, can_dead) ~ var + age_cat + race_ethnicity + Census_Tract_Poverty_Indicator, data = x) # Model adjusted for race, age category, and a measure of poverty
 
 
 a<-as.data.frame(exp(cbind(HR = coef(model), confint(model))))
    a<-a[c(1,2,3),] %>%
     rownames_to_column() %>%
-    mutate(model="Adjusted for race_ethnicty and census tract poverty indicator") %>%
-    mutate(Race = race_e) 
+    mutate(model="Adjusted for age category, race_ethnicty, and census tract poverty indicator") %>%
+    mutate(Cancer_Type = can_type_e) 
 }
+
+a<-cox("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases", model, x$In_Medicaid_Flag) 
+b<-cox("II. Lymphomas and reticuloendothelial neoplasms", model, x$In_Medicaid_Flag)
+c<-cox("III. CNS and miscellaneous intracranial and intraspinal neoplasms", model, x$In_Medicaid_Flag)
+d<-cox("IV. Neuroblastoma and other peripheral nervous cell tumors", model, x$In_Medicaid_Flag)
+e<-cox("V. Retinoblastoma", model, x$In_Medicaid_Flag)
+f<-cox("VI. Renal tumors", model, x$In_Medicaid_Flag)
+g<-cox("VII. Hepatic tumors", model, x$In_Medicaid_Flag) 
+h<-cox("VIII. Malignant bone tumors", model, x$In_Medicaid_Flag)
+i<-cox("IX. Soft tissue and other extraosseous sarcomas", model, x$In_Medicaid_Flag)
+j<-cox("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads", model, x$In_Medicaid_Flag)
+k<-cox("XI. Other malignant epithelial neoplasms and malignant melanomas", model, x$In_Medicaid_Flag)
+l<-cox("XII. Other and unspecified malignant neoplasms", model, x$In_Medicaid_Flag)
+
+m<-cox2("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases", model2, x$mcont3)
+n<-cox2("II. Lymphomas and reticuloendothelial neoplasms", model2, x$mcont3)
+o<-cox2("III. CNS and miscellaneous intracranial and intraspinal neoplasms", model2, x$mcont3)
+p<-cox2("IV. Neuroblastoma and other peripheral nervous cell tumors", model2, x$mcont3)
+q<-cox2("V. Retinoblastoma", model2, x$mcont3)
+r<-cox2("VI. Renal tumors", model2, x$mcont3)
+s<-cox2("VII. Hepatic tumors", model2, x$mcont3)
+t<-cox2("VIII. Malignant bone tumors", model2, x$mcont3)
+u<-cox2("IX. Soft tissue and other extraosseous sarcomas", model2, x$mcont3)
+v<-cox2("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads", model2, x$mcont3)
+w<-cox2("XI. Other malignant epithelial neoplasms and malignant melanomas", model2, x$mcont3)
+y<-cox2("XII. Other and unspecified malignant neoplasms", model2, x$mcont3)
+
+Table5 <- rbind(a,b,c,d,e,f,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,y)
+
 ```
 
 
@@ -1294,14 +1344,22 @@ m<-cox2("Hispanic", model2, x$mcont3)
 
 Table4 <- rbind(a,b,c,d,e,f,h,i,j,k,l,m)
 ```
-# export data to excel (Tables 2-4)
+# export data to excel (Tables 2-5)
 ```{r}
 sheets<-list("Table2 (overall CPH)" = Table2,
              "Table 3 (by age category)" = Table3,
-             "Table 4 (by race ethnicity)" = Table4)
+             "Table 4 (by race ethnicity)" = Table4,
+             "Table 5 (by cancer type)" = Table5)
 write.xlsx(sheets, file="SEER0to19analysis_tables.xlsx", keepNA=TRUE, overwrite=TRUE)
 ```
+# Export supplementary tables to excel
+```{r}
+sheets <- list("Supplementary table 1" = MF_age_0to19,
+               "Supplementary table 2" = MF_race_0to19,
+               "Supplementary table 3" = MF_cancer_0to19)
+write.xlsx(sheets, file="Supplementary tables.xlsx", showNA=TRUE, overwrite = TRUE)
 
+```
 
 # get results for each cancer type for mcont3
 ```{r}
@@ -1369,164 +1427,3 @@ res.cox3
 summary(res.cox3)
 ```
 
-# Effect Modification by race
-```{r}
-# model with interaction term between race category and medicaid flag
-res.cox2_em <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag +race_cat +age_cat + Census_Tract_Poverty_Indicator + race_cat*In_Medicaid_Flag, data = seer0to19) # Model adjusted for race age and a measure of poverty
-summary(res.cox2_em)
-
-# likelihood ratio test
-library(lmtest)
-lrtest(res.cox2, res.cox2_em)
-
-# model with interaction term between race cateogry and mcont3
-res.cox4_em <- coxph(Surv(survmo, can_dead) ~ mcont3 + race_cat +age_cat + Census_Tract_Poverty_Indicator + race_cat*mcont3, data = seer0to19) # Model adjusted for race age and a measure of poverty
-summary(res.cox4_em)
-
-#likelihood ratio test
-lrtest(res.cox4, res.cox4_em)
-```
-
-# Effect Modification by age category
-```{r}
-# model with interaction term between age category and medicaid flag
-res.cox2_em2 <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag +race_cat +age_cat + Census_Tract_Poverty_Indicator + age_cat*In_Medicaid_Flag, data = seer0to19) # Model adjusted for race age and a measure of poverty
-res.cox2_em2
-summary(res.cox2_em2)
-
-# likelihood ratio test
-library(lmtest)
-lrtest(res.cox2, res.cox2_em2)
-
-# model with interaction term between age cateogry and mcont3
-res.cox4_em2 <- coxph(Surv(survmo, can_dead) ~ mcont3 + race_cat +age_cat + Census_Tract_Poverty_Indicator + age_cat*mcont3, data = seer0to19) # Model adjusted for race age and a measure of poverty
-summary(res.cox4_em2)
-
-#likelihood ratio test
-lrtest(res.cox4, res.cox4_em2)
-```
-
-# Effect Modification by tumor type
-```{r}
-# model without interaction term between tumor type and medicaid flag
-res.cox5 <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag +race_cat +age_cat + Census_Tract_Poverty_Indicator + can_type, data = seer0to19) # Model adjusted for race age and a measure of poverty
-res.cox5
-summary(res.cox5)
-
-# model with interaction term between tumor type and medicaid flag
-res.cox5_em <- coxph(Surv(survmo, can_dead) ~ In_Medicaid_Flag +race_cat +age_cat + Census_Tract_Poverty_Indicator + can_type + can_type*In_Medicaid_Flag, data = seer0to19) # Model adjusted for race age and a measure of poverty
-res.cox5_em
-summary(res.cox5_em)
-
-# likelihood ratio test
-library(lmtest)
-lrtest(res.cox5, res.cox5_em)
-
-# model without interaction term between tumor type and medicaid enrollment flag
-res.cox6 <- coxph(Surv(survmo, can_dead) ~ mcont3 +race_cat +age_cat + Census_Tract_Poverty_Indicator + can_type, data = seer0to19) # Model adjusted for race age and a measure of poverty
-res.cox6
-summary(res.cox6)
-
-# model with interaction term between tumor type and medicaid flag
-res.cox6_em <- coxph(Surv(survmo, can_dead) ~ mcont3 +race_cat +age_cat + Census_Tract_Poverty_Indicator + can_type + can_type*mcont3, data = seer0to19) # Model adjusted for race age and a measure of poverty
-res.cox6_em
-summary(res.cox6_em)
-
-# likelihood ratio test
-library(lmtest)
-lrtest(res.cox6, res.cox6_em)
-```
-
-### Stratified models by age category
-```{r}
-age_strat <- function(age_f, outcome_var, model_outcome){
-  seer0to19$outcome_var <<- outcome_var
-  x <- seer0to19 %>%
-      filter(age_cat == age_f)
-model<-coxph(Surv(survmo, can_dead) ~ outcome_var +race_cat +age_cat + Census_Tract_Poverty_Indicator, data = x)
-model_coef <- summary(model)
-
-r <- data.frame(model_coef$coefficients)
-
-# calculating odds ratio
-r$HR <- round(exp(r$coef),2)
-# calculating confidence intervals
-r$lower95 <- round(exp(r$coef - 1.96*r$se.coef.),2)
-r$upper95 <- round(exp(r$coef + 1.96*r$se.coef.),2)
-
-r <- r%>%rownames_to_column() %>%
-  mutate(model_outcome = model_outcome) %>%
-  mutate(Age_Group = age_f)
-r<-r[,c(1,7:11)]
-
-}
-
-A_flag <- age_strat("0-4", seer0to19$In_Medicaid_Flag, "In_Medicaid_Flag")
-B_flag <- age_strat("5-9", seer0to19$In_Medicaid_Flag, "In_Medicaid_Flag")
-C_flag <- age_strat("10-14", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-D_flag <- age_strat("15-19", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-
-A_dur <- age_strat("0-4", seer0to19$mcont3, "Enrollment duration")
-B_dur <- age_strat("5-9", seer0to19$mcont3, "Enrollment duration")
-C_dur <- age_strat("10-14", seer0to19$mcont3, "Enrollment duration")
-D_dur <- age_strat("15-19", seer0to19$mcont3, "Enrollment duration")
-
-age_table <- rbind(A_flag[c(1),],B_flag[c(1),],C_flag[c(1),],D_flag[c(1),],A_dur[c(1:3),],B_dur[c(1:3),],C_dur[c(1:3),],D_dur[c(1:3),])
-
-
-```
-
-# Export tables to excel
-```{r}
-library(openxlsx)
-write.xlsx(age_table, file="age_stratified_tables.xlsx", showNA=TRUE, overwrite=TRUE)
-
-```
-
-### Stratified models by tumor type
-```{r}
-cancer_strat <- function(tumor_type, outcome_var, model_outcome){
-  seer0to19$outcome_var <<- outcome_var
-  x <- seer0to19 %>%
-      filter(can_type == tumor_type)
-model<-coxph(Surv(survmo, can_dead) ~ outcome_var +race_cat +age_cat + Census_Tract_Poverty_Indicator, data = x)
-model_coef <- summary(model)
-
-r <- data.frame(model_coef$coefficients)
-
-# calculating odds ratio
-r$HR <- round(exp(r$coef),2)
-# calculating confidence intervals
-r$lower95 <- round(exp(r$coef - 1.96*r$se.coef.),2)
-r$upper95 <- round(exp(r$coef + 1.96*r$se.coef.),2)
-
-r <- r%>%rownames_to_column() %>%
-  mutate(model_outcome = model_outcome) %>%
-  mutate(Cancer_type = tumor_type)
-r<-r[,c(1,7:11)]
-
-}
-
-A_flag <- cancer_strat("I. Leukemias, myeloproliferative diseases, and myelodysplastic diseases", seer0to19$In_Medicaid_Flag, "In_Medicaid_Flag")
-B_flag <- cancer_strat("II. Lymphomas and reticuloendothelial neoplasms", seer0to19$In_Medicaid_Flag, "In_Medicaid_Flag")
-C_flag <- cancer_strat("III. CNS and miscellaneous intracranial and intraspinal neoplasms", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-D_flag <- cancer_strat("IV. Neuroblastoma and other peripheral nervous cell tumors", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-E_flag <- cancer_strat("V. Retinoblastoma", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-F_flag <- cancer_strat("VI. Renal tumors", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-G_flag <- cancer_strat("VII. Hepatic tumors", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-H_flag <- cancer_strat("VIII. Malignant bone tumors", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-I_flag <- cancer_strat("IX. Soft tissue and other extraosseous sarcomas", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-J_flag <- cancer_strat("X. Germ cell tumors, trophoblastic tumors, and neoplasms of gonads", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-K_flag <- cancer_strat("XI. Other malignant epithelial neoplasms and malignant melanomas", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-L_flag <- cancer_strat("XII. Other and unspecified malignant neoplasms", seer0to19$In_Medicaid_Flag,"In_Medicaid_Flag")
-
-type_table <- rbind(A_flag[c(1),],B_flag[c(1),],C_flag[c(1),],D_flag[c(1),],E_flag[c(1),],F_flag[c(1),],G_flag[c(1),],H_flag[c(1),],I_flag[c(1),],J_flag[c(1),],K_flag[c(1),],L_flag[c(1),])
-
-
-```
-# Export tables to excel
-```{r}
-library(openxlsx)
-write.xlsx(type_table, file="type_stratified_tables.xlsx", showNA=TRUE, overwrite=TRUE)
-
-```
